@@ -1,0 +1,22 @@
+
+spring:
+  application:
+    name: admin
+  datasource:
+    url: jdbc:postgresql://localhost:5435/admin
+    username: admin
+    password: admin
+  flyway:
+    locations: classpath:db/migration
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5435/admin
+    username: admin
+    password: admin
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: closeSea
+    password: closeSeaP@ssword
+    template:
+      routing-key: "nftRoutingKey"
+      exchange: "nftExchange"
