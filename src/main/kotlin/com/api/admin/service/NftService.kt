@@ -2,7 +2,7 @@ package com.api.admin.service
 
 import com.api.admin.NftResponse
 import com.api.admin.NftResponse.Companion.toEntity
-import com.api.admin.domain.NftRepository
+import com.api.admin.domain.nft.NftRepository
 import org.springframework.stereotype.Service
 
 @Service

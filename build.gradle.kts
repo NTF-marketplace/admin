@@ -30,6 +30,8 @@ dependencies {
     implementation("org.springframework:spring-jdbc")
     implementation("org.springframework.kafka:spring-kafka")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
+
+    implementation("org.web3j:core:4.9.8")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.postgresql:r2dbc-postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

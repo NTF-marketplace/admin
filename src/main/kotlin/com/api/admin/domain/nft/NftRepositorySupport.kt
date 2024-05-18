@@ -1,4 +1,4 @@
-package com.api.admin.domain
+package com.api.admin.domain.nft
 
 import reactor.core.publisher.Mono
 
