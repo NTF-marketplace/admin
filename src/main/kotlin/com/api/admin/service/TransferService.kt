@@ -38,7 +38,8 @@ class TransferService(
                     .flatMap { nft ->
                         getNftOwner(request.chainType, nft.tokenAddress, nft.tokenId)
                             .filterWhen { address -> Mono.just(address == adminAddress) }
-                            .flatMap { saveTransfer(nft.id!!, wallet) }
+                            .flatMap { saveTransfer(nft.id, wallet) }
+                        // 이벤트로?
                     }
             }
             .then()
@@ -55,6 +56,7 @@ class TransferService(
         return transferRepository.save(transfer)
     }
 
+    //TODO("apiKey 캡슐화")
     fun getNftOwner(chainType: ChainType, contractAddress: String, tokenId: String): Mono<String?> {
         val web3 = Web3j.build(HttpService(chainType.baseUrl() + "/v3/98b672d2ce9a4089a3a5cb5081dde2fa"))
         val function = Function(

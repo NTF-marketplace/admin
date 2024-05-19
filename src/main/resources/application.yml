@@ -1,4 +1,5 @@
-
+server:
+  port: 8084
 spring:
   application:
     name: admin
@@ -17,6 +18,3 @@ spring:
     port: 5672
     username: closeSea
     password: closeSeaP@ssword
-    template:
-      routing-key: "nftRoutingKey"
-      exchange: "nftExchange"
