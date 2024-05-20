@@ -4,8 +4,11 @@ import com.api.admin.controller.dto.ValidTransferRequest
 import com.api.admin.domain.nft.NftRepository
 import com.api.admin.domain.transfer.Transfer
 import com.api.admin.domain.transfer.TransferRepository
+import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
-import com.api.admin.enums.StatusType
+import com.api.admin.rabbitMQ.event.dto.AdminTransferCreatedEvent
+import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.web3j.protocol.core.methods.request.Transaction
 import org.web3j.abi.FunctionEncoder
@@ -26,6 +29,7 @@ import java.time.Instant
 class TransferService(
     private val nftRepository: NftRepository,
     private val transferRepository: TransferRepository,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
 
      private val adminAddress = "0x01b72b4aa3f66f213d62d53e829bc172a6a72867"
@@ -38,20 +42,28 @@ class TransferService(
                     .flatMap { nft ->
                         getNftOwner(request.chainType, nft.tokenAddress, nft.tokenId)
                             .filterWhen { address -> Mono.just(address == adminAddress) }
-                            .flatMap { saveTransfer(nft.id, wallet) }
-                        // 이벤트로?
+                            .flatMap { saveTransfer(nft.id, wallet, AccountType.DEPOSIT) }
+                            .doOnSuccess { eventPublisher.publishEvent(AdminTransferCreatedEvent(this, it.toResponse()))  }
                     }
             }
             .then()
     }
 
-    fun saveTransfer(nftId: Long, wallet: String): Mono<Transfer> {
+    private fun Transfer.toResponse( ) = AdminTransferResponse(
+        id = this.id!!,
+        walletAddress = this.wallet,
+        nftId = this.nftId,
+        timestamp = this.timestamp,
+        accountType = this.accountType
+    )
+
+    fun saveTransfer(nftId: Long, wallet: String,accountType: AccountType): Mono<Transfer> {
         val transfer = Transfer(
             id = null,
             wallet = wallet,
             nftId = nftId,
             timestamp = Instant.now().toEpochMilli(),
-            status = StatusType.DEPOSIT.toString()
+            accountType = accountType.toString()
         )
         return transferRepository.save(transfer)
     }

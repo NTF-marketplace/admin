@@ -12,6 +12,6 @@ CREATE TABLE IF NOT EXISTS transfer (
     id BIGINT PRIMARY KEY,
     wallet VARCHAR(255) NOT NULL,
     nft_id BIGINT REFERENCES nft(id),
-    timestamp bigint not null
-    status VARCHAR(255) NOT NULL
-)
+    timestamp bigint not null,
+    account_type VARCHAR(255) NOT NULL
+);

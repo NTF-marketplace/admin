@@ -1,5 +1,6 @@
 package com.api.admin.rabbitMQ.sender
 
+import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.stereotype.Service
 
@@ -8,8 +9,8 @@ class RabbitMQSender(
     private val rabbitTemplate: RabbitTemplate
 ) {
 
-    fun depositSend(deposit: Long) {
-        rabbitTemplate.convertAndSend("depositExchange", "depositRoutingKey", deposit)
+    fun transferSend(transfer: AdminTransferResponse) {
+        rabbitTemplate.convertAndSend("depositExchange", "depositRoutingKey", transfer)
     }
 
 }

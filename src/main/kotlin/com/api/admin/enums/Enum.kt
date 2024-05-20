@@ -9,5 +9,10 @@ enum class ChainType{
 }
 
 enum class StatusType{
+    ACTIVE, DEACTIVE
+}
+
+enum class AccountType{
     WITHDRAW, DEPOSIT
 }
+

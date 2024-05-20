@@ -45,11 +45,11 @@ class RabbitMQConfig {
     fun bindingNftQueue(nftQueue: Queue, nftExchange: DirectExchange) = createBinding(nftQueue, nftExchange, "nftRoutingKey")
 
     @Bean
-    fun depositQueue() = createQueue("depositQueue")
+    fun transferQueue() = createQueue("transferQueue")
 
     @Bean
-    fun depositExchange() = createExchange("depositExchange")
+    fun transferExchange() = createExchange("transferExchange")
 
     @Bean
-    fun bindingDepositQueue(depositQueue: Queue, depositExchange: DirectExchange) = createBinding(depositQueue, depositExchange, "depositRoutingKey")
+    fun bindingTransferQueue(transferQueue: Queue, transferExchange: DirectExchange) = createBinding(transferQueue, transferExchange, "transferRoutingKey")
 }

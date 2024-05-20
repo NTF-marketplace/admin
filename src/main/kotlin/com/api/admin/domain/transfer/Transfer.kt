@@ -1,5 +1,6 @@
 package com.api.admin.domain.transfer
 
+import com.api.admin.enums.AccountType
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 
@@ -9,7 +10,7 @@ class Transfer(
     val nftId: Long,
     val wallet: String,
     val timestamp: Long,
-    val status: String
+    val accountType: String
 ) {
 
 }
