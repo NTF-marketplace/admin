@@ -6,3 +6,12 @@ CREATE TABLE IF NOT EXISTS nft (
     nft_name varchar(255) NOT NULL,
     collection_name varchar(500)
     );
+
+
+CREATE TABLE IF NOT EXISTS transfer (
+    id BIGINT PRIMARY KEY,
+    wallet VARCHAR(255) NOT NULL,
+    nft_id BIGINT REFERENCES nft(id),
+    timestamp bigint not null
+    status VARCHAR(255) NOT NULL
+)

@@ -1,4 +1,4 @@
-package com.api.admin.domain
+package com.api.admin.domain.nft
 
 import org.springframework.data.repository.reactive.ReactiveCrudRepository
 

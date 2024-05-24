@@ -1,6 +1,6 @@
 package com.api.admin
 
-import com.api.admin.domain.Nft
+import com.api.admin.domain.nft.Nft
 
 data class NftResponse(
     val id : Long,
