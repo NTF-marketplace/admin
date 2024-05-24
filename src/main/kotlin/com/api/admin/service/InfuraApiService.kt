@@ -2,9 +2,7 @@ package com.api.admin.service
 
 import com.api.admin.enums.ChainType
 import com.api.admin.service.dto.InfuraRequest
-import com.api.admin.service.dto.InfuraTransferDetail
 import com.api.admin.service.dto.InfuraTransferResponse
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
@@ -36,6 +34,19 @@ class InfuraApiService {
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(InfuraTransferResponse::class.java)
+
+    }
+
+    fun getSend(chainType: ChainType,signedTransactionData: String): Mono<String> {
+        val requestBody = InfuraRequest(method = "eth_sendRawTransaction", params = listOf(signedTransactionData))
+        val webClient = urlByChain(chainType)
+
+        return webClient.post()
+            .uri("/v3/98b672d2ce9a4089a3a5cb5081dde2fa")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestBody)
+            .retrieve()
+            .bodyToMono(String::class.java)
 
     }
 }

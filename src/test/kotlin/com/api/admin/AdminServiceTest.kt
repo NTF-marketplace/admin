@@ -8,9 +8,11 @@ import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
 import com.api.admin.rabbitMQ.sender.RabbitMQSender
 import com.api.admin.service.InfuraApiService
 import com.api.admin.service.TransferService
+import com.api.admin.service.Web3jService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import java.math.BigInteger
 import java.time.Instant
 
 @SpringBootTest
@@ -18,6 +20,7 @@ class AdminServiceTest(
     @Autowired private val transferService: TransferService,
     @Autowired private val rabbitMQSender: RabbitMQSender,
     @Autowired private val infuraApiService: InfuraApiService,
+    @Autowired private val web3jService: Web3jService,
 ) {
 
 //    @Test
@@ -72,6 +75,24 @@ class AdminServiceTest(
         )
         rabbitMQSender.transferSend(response)
         Thread.sleep(10000)
+    }
+
+    @Test
+    fun sendMatic() {
+//        web3jService.createTransaction(
+//            "e9769d3c00032a83d703e03630edbfc3cb634b40b92e38ab2890d5e37f21bb15",
+//            "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65",
+//            BigInteger("1000000000000000000")
+//            )
+
+        val transactionData = web3jService.createTransaction("e9769d3c00032a83d703e03630edbfc3cb634b40b92e38ab2890d5e37f21bb15",
+            "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65",
+            BigInteger("1000000000000000000"))
+
+
+
+        val response = infuraApiService.getSend(ChainType.POLYGON_MAINNET,transactionData).block()
+        println(response)
     }
 
 
