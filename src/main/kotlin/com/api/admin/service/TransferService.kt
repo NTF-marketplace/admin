@@ -1,26 +1,16 @@
 package com.api.admin.service
 
-import com.api.admin.controller.dto.ValidTransferRequest
 import com.api.admin.domain.nft.NftRepository
 import com.api.admin.domain.transfer.Transfer
 import com.api.admin.domain.transfer.TransferRepository
 import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
+import com.api.admin.enums.TransferType
 import com.api.admin.rabbitMQ.event.dto.AdminTransferCreatedEvent
 import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
 import com.api.admin.service.dto.InfuraTransferDetail
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
-import org.web3j.protocol.core.methods.request.Transaction
-import org.web3j.abi.FunctionEncoder
-import org.web3j.abi.FunctionReturnDecoder
-import org.web3j.abi.datatypes.Function
-import org.web3j.abi.datatypes.generated.Uint256
-import org.web3j.abi.TypeReference
-import org.web3j.abi.datatypes.Address
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameterName
-import org.web3j.protocol.http.HttpService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.math.BigDecimal
@@ -38,65 +28,73 @@ class TransferService(
      private val adminAddress = "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65"
      private val transferEventSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
-
-//    fun deposit(wallet: String, chainType: ChainType,transactionHash: String): Mono<Void> {
-//        return Flux.fromIterable(requests)
-//            .flatMap { request ->
-//                nftRepository.findById(request.nftId)
-//                    .flatMap { nft ->
-//                        getNftOwner(request.chainType, nft.tokenAddress, nft.tokenId)
-//                            .filterWhen { address -> Mono.just(address == adminAddress) }
-//                            .flatMap { saveTransfer(nft.id, wallet, AccountType.DEPOSIT) }
-//                            .doOnSuccess { eventPublisher.publishEvent(AdminTransferCreatedEvent(this, it.toResponse()))  }
-//                    }
-//            }
-//            .then()
-//    }
-
-//    private fun Transfer.toResponse( ) = AdminTransferResponse(
-//        id = this.id!!,
-//        walletAddress = this.wallet,
-//        nftId = this.nftId ,
-//        timestamp = this.timestamp,
-//        accountType = this.accountType
-//    )
-
-    fun saveTransfer(wallet: String, chainType: ChainType, transactionHash: String): Mono<Void> {
-        return infuraApiService.getNftTransfer(chainType, transactionHash)
-            .flatMapMany { response ->
-                println(response.toString())
-                Flux.fromIterable(response.result.logs)
-                    .flatMap { it.toEntity(wallet) }
-            }
-            .flatMap { transfer ->
-                transferRepository.save(transfer)
+    fun deposit(wallet: String, chainType: ChainType, transactionHash: String): Mono<Void> {
+        return saveTransfer(wallet, chainType, transactionHash)
+            .doOnNext { transfer ->
+                eventPublisher.publishEvent(AdminTransferCreatedEvent(this, transfer.toResponse()))
             }
             .then()
     }
+    fun saveTransfer(wallet: String, chainType: ChainType, transactionHash: String): Flux<Transfer> {
+        return infuraApiService.getNftTransfer(chainType, transactionHash)
+            .flatMapMany { response ->
+                Flux.fromIterable(response.result.logs)
+                    .flatMap { it.toEntity(wallet, AccountType.DEPOSIT) }
+            }
+            .flatMap { transfer ->
+                checkTransferExistenceAndSave(transfer)
+            }
+    }
+
+    private fun checkTransferExistenceAndSave(transfer: Transfer): Mono<Transfer> {
+        return transferRepository.findByWalletAndAccountTypeAndNftId(transfer.wallet, transfer.accountType, transfer.nftId!!)
+            .flatMap { existingTransfer ->
+                if (existingTransfer != null) {
+                    Mono.empty()
+                } else {
+                    transferRepository.existsByWalletAndAccountTypeAndTransactionHashAndTimestampAfter(
+                        transfer.wallet, AccountType.WITHDRAW.toString(), transfer.transactionHash, transfer.timestamp
+                    ).flatMap { withdrawalExists ->
+                        if (withdrawalExists) {
+                            Mono.empty()
+                        } else {
+                            transferRepository.save(transfer)
+                        }
+                    }
+                }
+            }
+    }
+
+    private fun Transfer.toResponse() = AdminTransferResponse(
+        id = this.id!!,
+        walletAddress = this.wallet,
+        nftId = this.nftId,
+        timestamp =this.timestamp,
+        accountType = this.accountType,
+        transferType = this.transferType,
+        balance = this.balance
+    )
 
 
-
-    fun InfuraTransferDetail.toEntity(wallet: String): Mono<Transfer> {
+    fun InfuraTransferDetail.toEntity(wallet: String,accountType: AccountType): Mono<Transfer> {
         return Mono.just(this)
             .filter { it.topics.isNotEmpty() && it.topics[0] == transferEventSignature }
             .filter { it.topics.size >= 3 && parseAddress(it.topics[2]) == adminAddress.lowercase() && parseAddress(it.topics[1]) == wallet.lowercase() }
             .flatMap { log ->
-                println("log: " + log.toString())
-                val transferType = if (log.topics.size > 3) "ERC721" else "ERC20"
-
+                val transferType = if (log.topics.size > 3) TransferType.ERC721 else TransferType.ERC20
                 when (transferType) {
-                    "ERC721" -> {
+                    TransferType.ERC721 -> {
                         val tokenId = BigInteger(log.topics[3].removePrefix("0x"), 16).toString()
                         nftRepository.findByTokenAddressAndTokenId(log.address, tokenId) // 없으면 nft서버가서 저장해와 ㅋ
-                            .mapNotNull { nft ->
+                            .map { nft ->
                                 Transfer(
                                     id = null,
                                     nftId = nft.id,
                                     wallet = wallet,
-                                    timestamp = System.currentTimeMillis(),
-                                    accountType = "DEPOSIT",
+                                    timestamp =  Instant.now().toEpochMilli(),
+                                    accountType = accountType.toString(),
                                     balance = null,
-                                    transferType = transferType,
+                                    transferType = transferType.toString(),
                                     transactionHash = log.transactionHash
                                 )
                             }
@@ -108,10 +106,10 @@ class TransferService(
                                 id = null,
                                 nftId = null,
                                 wallet = wallet,
-                                timestamp = System.currentTimeMillis(),
-                                accountType = "DEPOSIT",
+                                timestamp =  Instant.now().toEpochMilli(),
+                                accountType = accountType.toString(),
                                 balance = balance,
-                                transferType = transferType,
+                                transferType = transferType.toString(),
                                 transactionHash = log.transactionHash
                             )
                         )

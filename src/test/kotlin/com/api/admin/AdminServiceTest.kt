@@ -1,12 +1,17 @@
 package com.api.admin
 
+import com.api.admin.domain.transfer.Transfer
+import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
+import com.api.admin.enums.TransferType
+import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
 import com.api.admin.rabbitMQ.sender.RabbitMQSender
 import com.api.admin.service.InfuraApiService
 import com.api.admin.service.TransferService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import java.time.Instant
 
 @SpringBootTest
 class AdminServiceTest(
@@ -30,7 +35,7 @@ class AdminServiceTest(
 
     @Test
     fun saveTransfer() {
-        transferService.saveTransfer("0x01b72b4aa3f66f213d62d53e829bc172a6a72867",ChainType.POLYGON_MAINNET,"0x55fa4495f983e9f162b39b3df4dec8ebcff9aa05daee7b051c680ccfb49422a6").block()
+        transferService.saveTransfer("0x01b72b4aa3f66f213d62d53e829bc172a6a72867",ChainType.POLYGON_MAINNET,"0x55fa4495f983e9f162b39b3df4dec8ebcff9aa05daee7b051c680ccfb49422a6").next().block()
     }
 
     @Test
@@ -42,8 +47,31 @@ class AdminServiceTest(
 
     }
 
+    @Test
+    fun deposit() {
+        transferService.deposit("0x01b72b4aa3f66f213d62d53e829bc172a6a72867",ChainType.POLYGON_MAINNET,"0x55fa4495f983e9f162b39b3df4dec8ebcff9aa05daee7b051c680ccfb49422a6")
+            .block()
+
+        Thread.sleep(100000)
+    }
+
     private fun parseAddress(address: String): String {
         return "0x" + address.substring(26).padStart(40, '0')
+    }
+
+    @Test
+    fun sendMessage() {
+        val response = AdminTransferResponse(
+            id= 1L,
+            walletAddress = "0x01b72b4aa3f66f213d62d53e829bc172a6a72867",
+            nftId = 1L,
+            timestamp =  Instant.now().toEpochMilli(),
+            accountType = AccountType.DEPOSIT.toString(),
+            transferType = TransferType.ERC721.toString(),
+            balance = null
+        )
+        rabbitMQSender.transferSend(response)
+        Thread.sleep(10000)
     }
 
 

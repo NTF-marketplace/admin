@@ -13,7 +13,7 @@ class Transfer(
     val accountType: String,
     val balance: BigDecimal?,
     val transferType: String,
-    val transactionHash: String?,
+    val transactionHash: String,
 ) {
 
 }

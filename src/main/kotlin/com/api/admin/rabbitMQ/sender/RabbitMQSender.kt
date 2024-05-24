@@ -10,7 +10,7 @@ class RabbitMQSender(
 ) {
 
     fun transferSend(transfer: AdminTransferResponse) {
-        rabbitTemplate.convertAndSend("depositExchange", "depositRoutingKey", transfer)
+        rabbitTemplate.convertAndSend("transferExchange", "transferRoutingKey", transfer)
     }
 
 }

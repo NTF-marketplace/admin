@@ -1,5 +1,6 @@
 package com.api.admin.rabbitMQ.event
 
+import com.api.admin.rabbitMQ.event.dto.AdminTransferCreatedEvent
 import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
 import com.api.admin.rabbitMQ.sender.RabbitMQSender
 import org.springframework.context.event.EventListener
@@ -11,7 +12,7 @@ class AdminEventListener(
 ) {
 
     @EventListener
-    fun onDepositSend(event: AdminTransferResponse) {
-        provider.transferSend(event)
+    fun onDepositSend(event: AdminTransferCreatedEvent) {
+        provider.transferSend(event.transfer)
     }
 }
