@@ -8,6 +8,12 @@ enum class ChainType{
     POLYGON_MUMBAI,
 }
 
-enum class StatusType{
+
+enum class AccountType{
     WITHDRAW, DEPOSIT
 }
+
+enum class TransferType {
+    ERC20,ERC721
+}
+

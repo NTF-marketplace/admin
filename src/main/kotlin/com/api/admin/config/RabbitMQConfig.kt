@@ -14,21 +14,6 @@ import org.springframework.context.annotation.Configuration
 class RabbitMQConfig {
 
     @Bean
-    fun nftQueue(): Queue {
-        return Queue("nftQueue", true)
-    }
-
-    @Bean
-    fun nftExchange(): DirectExchange {
-        return DirectExchange("nftExchange")
-    }
-
-    @Bean
-    fun bindingNftQueue(nftQueue: Queue, nftExchange: DirectExchange): Binding {
-        return BindingBuilder.bind(nftQueue).to(nftExchange).with("nftRoutingKey")
-    }
-
-    @Bean
     fun jsonMessageConverter(): Jackson2JsonMessageConverter = Jackson2JsonMessageConverter()
 
     @Bean
@@ -37,4 +22,34 @@ class RabbitMQConfig {
         template.messageConverter = jsonMessageConverter
         return template
     }
+
+    private fun createQueue(name: String, durable: Boolean = true): Queue {
+        return Queue(name, durable)
+    }
+
+    private fun createExchange(name: String): DirectExchange {
+        return DirectExchange(name)
+    }
+
+    private fun createBinding(queue: Queue, exchange: DirectExchange, routingKey: String): Binding {
+        return BindingBuilder.bind(queue).to(exchange).with(routingKey)
+    }
+
+    @Bean
+    fun nftQueue() = createQueue("nftQueue")
+
+    @Bean
+    fun nftExchange() = createExchange("nftExchange")
+
+    @Bean
+    fun bindingNftQueue(nftQueue: Queue, nftExchange: DirectExchange) = createBinding(nftQueue, nftExchange, "nftRoutingKey")
+
+    @Bean
+    fun transferQueue() = createQueue("transferQueue")
+
+    @Bean
+    fun transferExchange() = createExchange("transferExchange")
+
+    @Bean
+    fun bindingTransferQueue(transferQueue: Queue, transferExchange: DirectExchange) = createBinding(transferQueue, transferExchange, "transferRoutingKey")
 }

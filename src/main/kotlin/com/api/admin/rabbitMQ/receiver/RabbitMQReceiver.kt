@@ -1,4 +1,4 @@
-package com.api.admin.rabbitMQ
+package com.api.admin.rabbitMQ.receiver
 
 import com.api.admin.NftResponse
 import com.api.admin.service.NftService
@@ -6,11 +6,11 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.stereotype.Service
 
 @Service
-class MessageReceiver(
+class RabbitMQReceiver(
     private val nftService: NftService,
 ) {
     @RabbitListener(queues = ["nftQueue"])
-    fun receiveMessage(nft: NftResponse) {
+    fun nftMessage(nft: NftResponse) {
         nftService.save(nft)
     }
 }

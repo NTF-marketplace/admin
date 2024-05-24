@@ -1,24 +1,19 @@
 package com.api.admin.service
 
-import com.api.admin.controller.dto.ValidTransferRequest
 import com.api.admin.domain.nft.NftRepository
 import com.api.admin.domain.transfer.Transfer
 import com.api.admin.domain.transfer.TransferRepository
+import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
-import com.api.admin.enums.StatusType
+import com.api.admin.enums.TransferType
+import com.api.admin.rabbitMQ.event.dto.AdminTransferCreatedEvent
+import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
+import com.api.admin.service.dto.InfuraTransferDetail
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
-import org.web3j.protocol.core.methods.request.Transaction
-import org.web3j.abi.FunctionEncoder
-import org.web3j.abi.FunctionReturnDecoder
-import org.web3j.abi.datatypes.Function
-import org.web3j.abi.datatypes.generated.Uint256
-import org.web3j.abi.TypeReference
-import org.web3j.abi.datatypes.Address
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameterName
-import org.web3j.protocol.http.HttpService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.Instant
 
@@ -26,60 +21,108 @@ import java.time.Instant
 class TransferService(
     private val nftRepository: NftRepository,
     private val transferRepository: TransferRepository,
+    private val eventPublisher: ApplicationEventPublisher,
+    private val infuraApiService: InfuraApiService,
 ) {
 
-     private val adminAddress = "0x01b72b4aa3f66f213d62d53e829bc172a6a72867"
+     private val adminAddress = "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65"
+     private val transferEventSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
-
-    fun validTransfer(wallet: String, requests: List<ValidTransferRequest>): Mono<Void> {
-        return Flux.fromIterable(requests)
-            .flatMap { request ->
-                nftRepository.findById(request.nftId)
-                    .flatMap { nft ->
-                        getNftOwner(request.chainType, nft.tokenAddress, nft.tokenId)
-                            .filterWhen { address -> Mono.just(address == adminAddress) }
-                            .flatMap { saveTransfer(nft.id!!, wallet) }
-                    }
+    fun deposit(wallet: String, chainType: ChainType, transactionHash: String): Mono<Void> {
+        return saveTransfer(wallet, chainType, transactionHash)
+            .doOnNext { transfer ->
+                eventPublisher.publishEvent(AdminTransferCreatedEvent(this, transfer.toResponse()))
             }
             .then()
     }
-
-    fun saveTransfer(nftId: Long, wallet: String): Mono<Transfer> {
-        val transfer = Transfer(
-            id = null,
-            wallet = wallet,
-            nftId = nftId,
-            timestamp = Instant.now().toEpochMilli(),
-            status = StatusType.DEPOSIT.toString()
-        )
-        return transferRepository.save(transfer)
+    fun saveTransfer(wallet: String, chainType: ChainType, transactionHash: String): Flux<Transfer> {
+        return infuraApiService.getNftTransfer(chainType, transactionHash)
+            .flatMapMany { response ->
+                Flux.fromIterable(response.result.logs)
+                    .flatMap { it.toEntity(wallet, AccountType.DEPOSIT) }
+            }
+            .flatMap { transfer ->
+                checkTransferExistenceAndSave(transfer)
+            }
     }
 
-    fun getNftOwner(chainType: ChainType, contractAddress: String, tokenId: String): Mono<String?> {
-        val web3 = Web3j.build(HttpService(chainType.baseUrl() + "/v3/98b672d2ce9a4089a3a5cb5081dde2fa"))
-        val function = Function(
-            "ownerOf",
-            listOf(Uint256(BigInteger(tokenId))),
-            listOf(object : TypeReference<Address>() {})
-        )
-
-        val encodedFunction = FunctionEncoder.encode(function)
-        val transaction = Transaction.createEthCallTransaction(null, contractAddress, encodedFunction)
-
-        return Mono.fromCallable {
-            val ethCall = web3.ethCall(transaction, DefaultBlockParameterName.LATEST).send()
-            val decode = FunctionReturnDecoder.decode(ethCall.value, function.outputParameters)
-            if (decode.isEmpty()) null else decode[0].value as String
-        }.retry(3)
+    private fun checkTransferExistenceAndSave(transfer: Transfer): Mono<Transfer> {
+        return transferRepository.findByWalletAndAccountTypeAndNftId(transfer.wallet, transfer.accountType, transfer.nftId!!)
+            .flatMap { existingTransfer ->
+                if (existingTransfer != null) {
+                    Mono.empty()
+                } else {
+                    transferRepository.existsByWalletAndAccountTypeAndTransactionHashAndTimestampAfter(
+                        transfer.wallet, AccountType.WITHDRAW.toString(), transfer.transactionHash, transfer.timestamp
+                    ).flatMap { withdrawalExists ->
+                        if (withdrawalExists) {
+                            Mono.empty()
+                        } else {
+                            transferRepository.save(transfer)
+                        }
+                    }
+                }
+            }
     }
 
-    fun ChainType.baseUrl(): String {
-        return when(this){
-            ChainType.ETHEREUM_MAINNET -> "https://mainnet.infura.io"
-            ChainType.POLYGON_MAINNET -> "https://polygon-mainnet.infura.io"
-            ChainType.ETHREUM_GOERLI -> "https://goerli.infura.io"
-            ChainType.ETHREUM_SEPOLIA -> "https://sepolia.infura.io"
-            ChainType.POLYGON_MUMBAI -> "https://polygon-mumbai.infura.io"
-        }
+    private fun Transfer.toResponse() = AdminTransferResponse(
+        id = this.id!!,
+        walletAddress = this.wallet,
+        nftId = this.nftId,
+        timestamp =this.timestamp,
+        accountType = this.accountType,
+        transferType = this.transferType,
+        balance = this.balance
+    )
+
+
+    fun InfuraTransferDetail.toEntity(wallet: String,accountType: AccountType): Mono<Transfer> {
+        return Mono.just(this)
+            .filter { it.topics.isNotEmpty() && it.topics[0] == transferEventSignature }
+            .filter { it.topics.size >= 3 && parseAddress(it.topics[2]) == adminAddress.lowercase() && parseAddress(it.topics[1]) == wallet.lowercase() }
+            .flatMap { log ->
+                val transferType = if (log.topics.size > 3) TransferType.ERC721 else TransferType.ERC20
+                when (transferType) {
+                    TransferType.ERC721 -> {
+                        val tokenId = BigInteger(log.topics[3].removePrefix("0x"), 16).toString()
+                        nftRepository.findByTokenAddressAndTokenId(log.address, tokenId) // 없으면 nft서버가서 저장해와 ㅋ
+                            .map { nft ->
+                                Transfer(
+                                    id = null,
+                                    nftId = nft.id,
+                                    wallet = wallet,
+                                    timestamp =  Instant.now().toEpochMilli(),
+                                    accountType = accountType.toString(),
+                                    balance = null,
+                                    transferType = transferType.toString(),
+                                    transactionHash = log.transactionHash
+                                )
+                            }
+                    }
+                    else -> {
+                        val balance = toBigDecimal(log.data)
+                        Mono.just(
+                            Transfer(
+                                id = null,
+                                nftId = null,
+                                wallet = wallet,
+                                timestamp =  Instant.now().toEpochMilli(),
+                                accountType = accountType.toString(),
+                                balance = balance,
+                                transferType = transferType.toString(),
+                                transactionHash = log.transactionHash
+                            )
+                        )
+                    }
+                }
+            }
     }
+
+    private fun parseAddress(address: String): String {
+        return "0x" + address.substring(26).padStart(40, '0')
+    }
+
+    private fun toBigDecimal(balance: String): BigDecimal =
+        BigInteger(balance.removePrefix("0x"), 16).toBigDecimal().divide(BigDecimal("1000000000000000000"))
+
 }
