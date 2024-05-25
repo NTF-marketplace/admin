@@ -5,7 +5,7 @@ import org.springframework.data.relational.core.mapping.Table
 import java.math.BigDecimal
 
 @Table("transfer")
-class Transfer(
+data class Transfer(
     @Id val id: Long?,
     val nftId: Long?,
     val wallet: String,

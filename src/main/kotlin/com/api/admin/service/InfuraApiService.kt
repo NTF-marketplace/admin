@@ -11,6 +11,8 @@ import reactor.core.publisher.Mono
 @Service
 class InfuraApiService {
 
+    private val apiKey = "98b672d2ce9a4089a3a5cb5081dde2fa"
+
     private fun urlByChain(chainType: ChainType) : WebClient {
         val baseUrl = when (chainType) {
             ChainType.ETHEREUM_MAINNET -> "https://mainnet.infura.io"
@@ -29,7 +31,7 @@ class InfuraApiService {
         val webClient = urlByChain(chainType)
 
         return webClient.post()
-            .uri("/v3/98b672d2ce9a4089a3a5cb5081dde2fa")
+            .uri("/v3/$apiKey")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
@@ -37,16 +39,27 @@ class InfuraApiService {
 
     }
 
-    fun getSend(chainType: ChainType,signedTransactionData: String): Mono<String> {
+    fun getSend(chainType: ChainType, signedTransactionData: String): Mono<String> {
         val requestBody = InfuraRequest(method = "eth_sendRawTransaction", params = listOf(signedTransactionData))
         val webClient = urlByChain(chainType)
 
         return webClient.post()
-            .uri("/v3/98b672d2ce9a4089a3a5cb5081dde2fa")
+            .uri("/v3/$apiKey")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(String::class.java)
+    }
 
+    fun getTransactionCount(chainType: ChainType,address: String) : Mono<String> {
+        val requestBody = InfuraRequest(method = "eth_getTransactionCount", params = listOf(address,"latest"))
+        val webClient = urlByChain(chainType)
+
+        return webClient.post()
+            .uri("/v3/$apiKey")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestBody)
+            .retrieve()
+            .bodyToMono(String::class.java)
     }
 }
