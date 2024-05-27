@@ -1,12 +1,13 @@
 package com.api.admin
 
 import com.api.admin.domain.nft.Nft
+import com.api.admin.enums.ChainType
 
 data class NftResponse(
     val id : Long,
     val tokenId: String,
     val tokenAddress: String,
-    val chainType: String,
+    val chainType: ChainType,
     val nftName: String,
     val collectionName: String
 ){

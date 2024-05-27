@@ -1,5 +1,6 @@
 package com.api.admin.service
 
+import com.api.admin.enums.ChainType
 import org.springframework.stereotype.Service
 import org.web3j.abi.FunctionEncoder
 import org.web3j.abi.datatypes.Address
@@ -22,18 +23,37 @@ class Web3jService(
     private val apiKey = "98b672d2ce9a4089a3a5cb5081dde2fa"
     private val privateKey = "e9769d3c00032a83d703e03630edbfc3cb634b40b92e38ab2890d5e37f21bb15"
 
-    fun createTransaction(privateKey:String,recipientAddress: String, amount: BigInteger): String {
+
+    private fun getChainId(chain: ChainType): Long {
+        val chain = when (chain) {
+            ChainType.ETHEREUM_MAINNET -> 1L
+            ChainType.POLYGON_MAINNET -> 137L
+            ChainType.LINEA_MAINNET -> 59144L
+            ChainType.LINEA_SEPOLIA -> 59140L
+            ChainType.ETHEREUM_HOLESKY -> 1L
+            ChainType.ETHEREUM_SEPOLIA -> 11155111L
+            ChainType.POLYGON_AMOY -> 80002L
+        }
+        return chain
+    }
+
+    fun createTransaction(privateKey:String,recipientAddress: String, amount: BigInteger,chainType: ChainType): String {
         val web3j = Web3j.build(HttpService("https://polygon-mainnet.infura.io/v3/$apiKey"))
         val credentials = Credentials.create(privateKey)
-        return createTransactionData(web3j, credentials, recipientAddress, amount)
+        return createERC20TransactionData(web3j, credentials, recipientAddress, amount,chainType)
 
     }
 
-    fun createTransactionData(web3j: Web3j, credentials: Credentials, recipientAddress: String, amountInWei: BigInteger): String {
+    fun createERC20TransactionData(web3j: Web3j,
+                                   credentials: Credentials,
+                                   recipientAddress: String,
+                                   amountInWei: BigInteger,
+                                   chainType: ChainType
+    ): String {
         val nonce = web3j.ethGetTransactionCount(credentials.address, DefaultBlockParameterName.LATEST).send().transactionCount
         val gasPrice = web3j.ethGasPrice().send().gasPrice
-        val gasLimit = BigInteger.valueOf(21000)
-        val chainId = 137L
+        val gasLimit = BigInteger.valueOf(15000)
+        val chainId = getChainId(chainType)
         val rawTransaction = RawTransaction.createEtherTransaction(
             nonce, gasPrice, gasLimit, recipientAddress, amountInWei
         )
@@ -42,11 +62,18 @@ class Web3jService(
         return Numeric.toHexString(signedMessage)
     }
 
-    fun createERC721TransactionData(web3j: Web3j, credentials: Credentials, contractAddress: String, fromAddress: String, toAddress: String, tokenId: BigInteger): String {
+    fun createERC721TransactionData(web3j: Web3j,
+                                    credentials: Credentials,
+                                    contractAddress: String,
+                                    fromAddress: String,
+                                    toAddress: String,
+                                    tokenId: BigInteger,
+                                    chainType: ChainType,
+    ): String {
         val nonce = web3j.ethGetTransactionCount(credentials.address, DefaultBlockParameterName.LATEST).send().transactionCount
         val gasPrice = web3j.ethGasPrice().send().gasPrice
-        val gasLimit = BigInteger.valueOf(60000)
-        val chainId = 137L
+        val gasLimit = BigInteger.valueOf(15000)
+        val chainId = getChainId(chainType)
 
         val function = Function(
             "safeTransferFrom",

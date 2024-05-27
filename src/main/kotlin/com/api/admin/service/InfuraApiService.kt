@@ -17,9 +17,11 @@ class InfuraApiService {
         val baseUrl = when (chainType) {
             ChainType.ETHEREUM_MAINNET -> "https://mainnet.infura.io"
             ChainType.POLYGON_MAINNET -> "https://polygon-mainnet.infura.io"
-            ChainType.ETHREUM_GOERLI -> "https://goerli.infura.io"
-            ChainType.ETHREUM_SEPOLIA -> "https://sepolia.infura.io"
-            ChainType.POLYGON_MUMBAI -> "https://polygon-mumbai.infura.io"
+            ChainType.LINEA_MAINNET -> "https://linea-mainnet.infura.io"
+            ChainType.LINEA_SEPOLIA -> "https://linea-sepolia.infura.io"
+            ChainType.ETHEREUM_HOLESKY -> "https://polygon-mumbai.infura.io"
+            ChainType.ETHEREUM_SEPOLIA -> "https://sepolia.infura.io"
+            ChainType.POLYGON_AMOY -> "https://polygon-amoy.infura.io"
         }
         return WebClient.builder()
             .baseUrl(baseUrl)

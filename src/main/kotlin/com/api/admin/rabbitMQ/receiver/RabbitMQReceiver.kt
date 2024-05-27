@@ -12,5 +12,7 @@ class RabbitMQReceiver(
     @RabbitListener(queues = ["nftQueue"])
     fun nftMessage(nft: NftResponse) {
         nftService.save(nft)
+            .subscribe()
+
     }
 }
