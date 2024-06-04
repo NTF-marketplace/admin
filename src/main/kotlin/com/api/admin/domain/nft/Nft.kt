@@ -1,7 +1,6 @@
 package com.api.admin.domain.nft
 
 import com.api.admin.enums.ChainType
-import org.springframework.boot.autoconfigure.web.WebProperties.Resources.Chain
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 
@@ -11,7 +10,5 @@ class Nft(
     val tokenId: String,
     val tokenAddress: String,
     val chainType: ChainType,
-    val nftName: String,
-    val collectionName: String
 ) {
 }

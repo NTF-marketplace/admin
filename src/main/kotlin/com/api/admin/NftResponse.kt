@@ -8,8 +8,6 @@ data class NftResponse(
     val tokenId: String,
     val tokenAddress: String,
     val chainType: ChainType,
-    val nftName: String,
-    val collectionName: String
 ){
     companion object{
         fun NftResponse.toEntity() = Nft(
@@ -17,8 +15,6 @@ data class NftResponse(
             tokenId = this.tokenId,
             tokenAddress = this.tokenAddress,
             chainType = this.chainType,
-            nftName = this.nftName,
-            collectionName = this.collectionName
         )
     }
 }
