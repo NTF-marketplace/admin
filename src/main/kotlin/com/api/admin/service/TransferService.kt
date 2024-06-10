@@ -9,6 +9,8 @@ import com.api.admin.enums.TransferType
 import com.api.admin.rabbitMQ.event.dto.AdminTransferCreatedEvent
 import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
 import com.api.admin.service.dto.InfuraTransferDetail
+import com.api.admin.storage.PriceStorage
+import com.api.admin.util.Utils.toTokenType
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -23,9 +25,10 @@ class TransferService(
     private val transferRepository: TransferRepository,
     private val eventPublisher: ApplicationEventPublisher,
     private val infuraApiService: InfuraApiService,
+    private val priceStorage: PriceStorage,
 ) {
 
-    private val adminAddress = "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65"
+    private val adminAddress = "0x01B72B4Aa3F66f213D62D53e829Bc172a6a72867"
     private val transferEventSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
     fun getTransferData(
@@ -41,7 +44,7 @@ class TransferService(
                 } else {
                     saveTransfer(wallet, chainType, transactionHash, AccountType.DEPOSIT)
                         .doOnNext { transfer ->
-                            eventPublisher.publishEvent(AdminTransferCreatedEvent(this, transfer.toResponse()))
+                            eventPublisher.publishEvent(AdminTransferCreatedEvent(this, transfer.toResponse(chainType)))
                         }
                         .then()
                 }
@@ -52,21 +55,27 @@ class TransferService(
         return infuraApiService.getNftTransfer(chainType, transactionHash)
             .flatMapMany { response ->
                 Flux.fromIterable(response.result.logs)
-                    .flatMap { it.toEntity(wallet, accountType) }
+                    .flatMap { it.toEntity(wallet, accountType,chainType) }
             }
             .flatMap { transfer -> transferRepository.save(transfer) }
     }
-    private fun Transfer.toResponse() = AdminTransferResponse(
-        id = this.id!!,
-        walletAddress = this.wallet,
-        nftId = this.nftId,
-        timestamp = this.timestamp,
-        accountType = this.accountType,
-        transferType = this.transferType,
-        balance = this.balance
-    )
 
-    fun InfuraTransferDetail.toEntity(wallet: String, accountType: AccountType): Mono<Transfer> {
+
+    private fun Transfer.toResponse(chainType: ChainType) : AdminTransferResponse {
+        return AdminTransferResponse(
+            id = this.id!!,
+            walletAddress = this.wallet,
+            nftId = this.nftId,
+            timestamp = this.timestamp,
+            accountType = this.accountType,
+            transferType = this.transferType,
+            balance = this.balance.let {priceStorage.get(chainType.toTokenType())?.multiply(it) }
+        )
+    }
+
+
+    // TODO(리팩토링)
+    fun InfuraTransferDetail.toEntity(wallet: String, accountType: AccountType,chainType: ChainType): Mono<Transfer> {
         return Mono.just(this)
             .filter { it.topics.isNotEmpty() && it.topics[0] == transferEventSignature }
             .filter {
@@ -77,6 +86,7 @@ class TransferService(
                 }
             }
             .flatMap { log ->
+                println("log : " + log)
                 val transferType = if (log.topics.size > 3) TransferType.ERC721 else TransferType.ERC20
                 when (transferType) {
                     TransferType.ERC721 -> {
@@ -91,7 +101,8 @@ class TransferService(
                                     accountType = accountType,
                                     balance = null,
                                     transferType = transferType,
-                                    transactionHash = log.transactionHash
+                                    transactionHash = log.transactionHash,
+                                    chainType =chainType
                                 )
                             }
                     }
@@ -107,7 +118,9 @@ class TransferService(
                                 accountType = accountType,
                                 balance = balance,
                                 transferType = transferType,
-                                transactionHash = log.transactionHash
+                                transactionHash = log.transactionHash,
+                                chainType =chainType
+
                             )
                         )
                     }

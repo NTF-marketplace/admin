@@ -33,5 +33,6 @@ CREATE TABLE IF NOT EXISTS transfer (
     account_type account_type NOT NULL,
     balance DECIMAL(19, 4),
     transfer_type transfer_type NOT NULL,
-    transaction_hash VARCHAR(255) NOT NULL
+    transaction_hash VARCHAR(255) NOT NULL,
+    chain_type chain_type NOT NULL
 );

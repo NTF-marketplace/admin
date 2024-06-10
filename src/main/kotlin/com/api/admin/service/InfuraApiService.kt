@@ -29,6 +29,7 @@ class InfuraApiService {
     }
 
     fun getNftTransfer(chainType: ChainType, transactionHash: String): Mono<InfuraTransferResponse> {
+        println("Infura getNftTransfer")
         val requestBody = InfuraRequest(method = "eth_getTransactionReceipt", params = listOf(transactionHash))
         val webClient = urlByChain(chainType)
 
