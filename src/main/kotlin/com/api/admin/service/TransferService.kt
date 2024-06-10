@@ -52,7 +52,7 @@ class TransferService(
         return infuraApiService.getNftTransfer(chainType, transactionHash)
             .flatMapMany { response ->
                 Flux.fromIterable(response.result.logs)
-                    .flatMap { it.toEntity(wallet, accountType) }
+                    .flatMap { it.toEntity(wallet, accountType,chainType) }
             }
             .flatMap { transfer -> transferRepository.save(transfer) }
     }
@@ -63,10 +63,11 @@ class TransferService(
         timestamp = this.timestamp,
         accountType = this.accountType,
         transferType = this.transferType,
-        balance = this.balance
+        balance = this.balance,
+        chainType = this.chainType,
     )
 
-    fun InfuraTransferDetail.toEntity(wallet: String, accountType: AccountType): Mono<Transfer> {
+    fun InfuraTransferDetail.toEntity(wallet: String, accountType: AccountType,chainType: ChainType): Mono<Transfer> {
         return Mono.just(this)
             .filter { it.topics.isNotEmpty() && it.topics[0] == transferEventSignature }
             .filter {
@@ -91,7 +92,8 @@ class TransferService(
                                     accountType = accountType,
                                     balance = null,
                                     transferType = transferType,
-                                    transactionHash = log.transactionHash
+                                    transactionHash = log.transactionHash,
+                                    chainType = chainType,
                                 )
                             }
                     }
@@ -107,7 +109,8 @@ class TransferService(
                                 accountType = accountType,
                                 balance = balance,
                                 transferType = transferType,
-                                transactionHash = log.transactionHash
+                                transactionHash = log.transactionHash,
+                                chainType = chainType,
                             )
                         )
                     }

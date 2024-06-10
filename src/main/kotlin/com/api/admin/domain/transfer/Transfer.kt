@@ -1,6 +1,7 @@
 package com.api.admin.domain.transfer
 
 import com.api.admin.enums.AccountType
+import com.api.admin.enums.ChainType
 import com.api.admin.enums.TransferType
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
@@ -16,6 +17,7 @@ data class Transfer(
     val balance: BigDecimal?,
     val transferType: TransferType,
     val transactionHash: String,
+    val chainType: ChainType,
 ) {
 
 }
