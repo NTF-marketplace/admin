@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service
 import org.web3j.abi.FunctionEncoder
 import org.web3j.abi.datatypes.Address
 import org.web3j.abi.datatypes.Function
+import org.web3j.abi.datatypes.Utf8String
 import org.web3j.abi.datatypes.generated.Uint256
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.RawTransaction
@@ -22,8 +23,6 @@ class Web3jService(
 
     private val apiKey = "98b672d2ce9a4089a3a5cb5081dde2fa"
     private val privateKey = "e9769d3c00032a83d703e03630edbfc3cb634b40b92e38ab2890d5e37f21bb15"
-
-
     private fun getChainId(chain: ChainType): Long {
         val chain = when (chain) {
             ChainType.ETHEREUM_MAINNET -> 1L
@@ -81,6 +80,43 @@ class Web3jService(
                 Address(fromAddress),
                 Address(toAddress),
                 Uint256(tokenId)
+            ),
+            emptyList()
+        )
+
+        val encodedFunction = FunctionEncoder.encode(function)
+
+        val rawTransaction = RawTransaction.createTransaction(
+            nonce, gasPrice, gasLimit, contractAddress, encodedFunction
+        )
+
+        val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId, credentials)
+        return Numeric.toHexString(signedMessage)
+    }
+
+    fun createERC1155TransactionData(
+        web3j: Web3j,
+        credentials: Credentials,
+        contractAddress: String,
+        fromAddress: String,
+        toAddress: String,
+        tokenId: BigInteger,
+        amount: BigInteger,
+        chainType: ChainType
+    ): String {
+        val nonce = web3j.ethGetTransactionCount(credentials.address, DefaultBlockParameterName.LATEST).send().transactionCount
+        val gasPrice = web3j.ethGasPrice().send().gasPrice
+        val gasLimit = BigInteger.valueOf(200000)
+        val chainId = getChainId(chainType)
+
+        val function = Function(
+            "safeTransferFrom",
+            listOf(
+                Address(credentials.address),
+                Address(toAddress),
+                Uint256(tokenId),
+                Uint256(amount),
+                Utf8String("") // empty data
             ),
             emptyList()
         )

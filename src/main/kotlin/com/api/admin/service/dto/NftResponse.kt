@@ -1,4 +1,4 @@
-package com.api.admin
+package com.api.admin.service.dto
 
 import com.api.admin.domain.nft.Nft
 import com.api.admin.enums.ChainType

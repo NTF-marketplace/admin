@@ -1,6 +1,6 @@
 package com.api.admin.rabbitMQ.receiver
 
-import com.api.admin.NftResponse
+import com.api.admin.service.dto.NftResponse
 import com.api.admin.service.NftService
 import org.springframework.amqp.rabbit.annotation.RabbitListener
 import org.springframework.stereotype.Service

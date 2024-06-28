@@ -5,7 +5,7 @@ import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 
 @Table("nft")
-class Nft(
+data class Nft(
     @Id val id : Long,
     val tokenId: String,
     val tokenAddress: String,
