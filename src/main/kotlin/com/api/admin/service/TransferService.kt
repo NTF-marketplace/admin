@@ -23,10 +23,13 @@ class TransferService(
     private val transferRepository: TransferRepository,
     private val eventPublisher: ApplicationEventPublisher,
     private val infuraApiService: InfuraApiService,
+    private val nftService: NftService,
+
 ) {
 
     private val adminAddress = "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65"
     private val transferEventSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+    private val nativeTransferEventSignature = "0xe6497e3ee548a3372136af2fcb0696db31fc6cf20260707645068bd3fe97f3c4"
 
     fun getTransferData(
         wallet: String,
@@ -37,7 +40,7 @@ class TransferService(
         return transferRepository.existsByTransactionHash(transactionHash)
             .flatMap {
                 if (it) {
-                    Mono.empty()
+                    Mono.error(IllegalStateException("Transaction already exists"))
                 } else {
                     saveTransfer(wallet, chainType, transactionHash, AccountType.DEPOSIT)
                         .doOnNext { transfer ->
@@ -49,13 +52,14 @@ class TransferService(
     }
 
     fun saveTransfer(wallet: String, chainType: ChainType, transactionHash: String, accountType: AccountType): Flux<Transfer> {
-        return infuraApiService.getNftTransfer(chainType, transactionHash)
+        return infuraApiService.getTransferLog(chainType, transactionHash)
             .flatMapMany { response ->
                 Flux.fromIterable(response.result.logs)
                     .flatMap { it.toEntity(wallet, accountType,chainType) }
             }
             .flatMap { transfer -> transferRepository.save(transfer) }
     }
+
     private fun Transfer.toResponse() = AdminTransferResponse(
         id = this.id!!,
         walletAddress = this.wallet,
@@ -67,56 +71,86 @@ class TransferService(
         chainType = this.chainType,
     )
 
-    fun InfuraTransferDetail.toEntity(wallet: String, accountType: AccountType,chainType: ChainType): Mono<Transfer> {
+    fun InfuraTransferDetail.toEntity(wallet: String, accountType: AccountType, chainType: ChainType): Mono<Transfer> {
         return Mono.just(this)
-            .filter { it.topics.isNotEmpty() && it.topics[0] == transferEventSignature }
-            .filter {
-                if (accountType == AccountType.DEPOSIT) {
-                    it.topics.size >= 3 && parseAddress(it.topics[2]) == adminAddress.lowercase() && parseAddress(it.topics[1]) == wallet.lowercase()
-                } else {
-                    it.topics.size >= 3 && parseAddress(it.topics[2]) == wallet.lowercase() && parseAddress(it.topics[1]) == adminAddress.lowercase()
-                }
-            }
             .flatMap { log ->
-                val transferType = if (log.topics.size > 3) TransferType.ERC721 else TransferType.ERC20
-                when (transferType) {
-                    TransferType.ERC721 -> {
-                        val tokenId = BigInteger(log.topics[3].removePrefix("0x"), 16).toString()
-                        nftRepository.findByTokenAddressAndTokenId(log.address, tokenId)
-                            .map { nft ->
-                                Transfer(
-                                    id = null,
-                                    nftId = nft.id,
-                                    wallet = wallet,
-                                    timestamp = Instant.now().toEpochMilli(),
-                                    accountType = accountType,
-                                    balance = null,
-                                    transferType = transferType,
-                                    transactionHash = log.transactionHash,
-                                    chainType = chainType,
-                                )
-                            }
-                    }
-
-                    else -> {
-                        val balance = toBigDecimal(log.data)
-                        Mono.just(
-                            Transfer(
-                                id = null,
-                                nftId = null,
-                                wallet = wallet,
-                                timestamp = Instant.now().toEpochMilli(),
-                                accountType = accountType,
-                                balance = balance,
-                                transferType = transferType,
-                                transactionHash = log.transactionHash,
-                                chainType = chainType,
-                            )
-                        )
-                    }
+                when {
+                    log.topics[0] == nativeTransferEventSignature ->
+                        handleERC20Transfer(log, wallet, accountType, chainType,TransferType.NATIVE)
+                    log.topics[0] == transferEventSignature && log.topics.size == 3 ->
+                        handleERC20Transfer(log, wallet, accountType, chainType, TransferType.ERC20)
+                    log.topics[0] == transferEventSignature && log.topics.size == 4 ->
+                        handleERC721Transfer(log, wallet, accountType, chainType)
+                    else -> Mono.empty()
                 }
             }
     }
+
+    private fun handleERC20Transfer(log: InfuraTransferDetail, wallet: String, accountType: AccountType, chainType: ChainType,transferType: TransferType): Mono<Transfer> {
+        val from = parseAddress(log.topics[2])
+        val to = parseAddress(log.topics[3])
+        val amount = when (transferType) {
+            TransferType.NATIVE -> parseNativeTransferAmount(log.data)
+            TransferType.ERC20 -> toBigDecimal(log.data)
+            else -> BigDecimal.ZERO
+        }
+
+        val isRelevantTransfer = when (accountType) {
+            AccountType.DEPOSIT -> from.equals(wallet, ignoreCase = true) && to.equals(adminAddress, ignoreCase = true)
+            AccountType.WITHDRAW -> from.equals(adminAddress, ignoreCase = true) && to.equals(wallet, ignoreCase = true)
+        }
+
+        return if (isRelevantTransfer) {
+            Mono.just(
+                Transfer(
+                    id = null,
+                    nftId = null,
+                    wallet = wallet,
+                    timestamp = Instant.now().toEpochMilli(),
+                    accountType = accountType,
+                    balance = amount,
+                    transferType = TransferType.ERC20,
+                    transactionHash = log.transactionHash,
+                    chainType = chainType,
+                )
+            )
+        } else {
+            Mono.empty()
+        }
+    }
+
+
+
+    private fun handleERC721Transfer(log: InfuraTransferDetail, wallet: String, accountType: AccountType, chainType: ChainType): Mono<Transfer> {
+        val from = parseAddress(log.topics[1])
+        val to = parseAddress(log.topics[2])
+        val tokenId = BigInteger(log.topics[3].removePrefix("0x"), 16).toString()
+
+        val isRelevantTransfer = when (accountType) {
+            AccountType.DEPOSIT -> from.equals(wallet, ignoreCase = true) && to.equals(adminAddress, ignoreCase = true)
+            AccountType.WITHDRAW -> from.equals(adminAddress, ignoreCase = true) && to.equals(wallet, ignoreCase = true)
+        }
+
+        return if (isRelevantTransfer) {
+            nftService.findByNft(log.address, tokenId, chainType)
+                .map { nft ->
+                    Transfer(
+                        id = null,
+                        nftId = nft.id,
+                        wallet = wallet,
+                        timestamp = Instant.now().toEpochMilli(),
+                        accountType = accountType,
+                        balance = null,
+                        transferType = TransferType.ERC721,
+                        transactionHash = log.transactionHash,
+                        chainType = chainType,
+                    )
+                }
+        } else {
+            Mono.empty()
+        }
+    }
+
     private fun parseAddress(address: String): String {
         return "0x" + address.substring(26).padStart(40, '0')
     }
@@ -124,4 +158,9 @@ class TransferService(
     private fun toBigDecimal(balance: String): BigDecimal =
         BigInteger(balance.removePrefix("0x"), 16).toBigDecimal().divide(BigDecimal("1000000000000000000"))
 
+    private fun parseNativeTransferAmount(data: String): BigDecimal {
+        val cleanData = data.removePrefix("0x")
+        val amountHex = cleanData.substring(0, 64)
+        return BigInteger(amountHex, 16).toBigDecimal().divide(BigDecimal("1000000000000000000"))
+    }
 }

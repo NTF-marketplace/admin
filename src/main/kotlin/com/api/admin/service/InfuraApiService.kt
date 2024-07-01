@@ -2,6 +2,7 @@ package com.api.admin.service
 
 import com.api.admin.enums.ChainType
 import com.api.admin.service.dto.InfuraRequest
+import com.api.admin.service.dto.InfuraResponse
 import com.api.admin.service.dto.InfuraTransferResponse
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
@@ -13,7 +14,7 @@ class InfuraApiService {
 
     private val apiKey = "98b672d2ce9a4089a3a5cb5081dde2fa"
 
-    private fun urlByChain(chainType: ChainType) : WebClient {
+    fun urlByChain(chainType: ChainType) : WebClient {
         val baseUrl = when (chainType) {
             ChainType.ETHEREUM_MAINNET -> "https://mainnet.infura.io"
             ChainType.POLYGON_MAINNET -> "https://polygon-mainnet.infura.io"
@@ -28,7 +29,7 @@ class InfuraApiService {
             .build()
     }
 
-    fun getNftTransfer(chainType: ChainType, transactionHash: String): Mono<InfuraTransferResponse> {
+    fun getTransferLog(chainType: ChainType, transactionHash: String): Mono<InfuraTransferResponse> {
         val requestBody = InfuraRequest(method = "eth_getTransactionReceipt", params = listOf(transactionHash))
         val webClient = urlByChain(chainType)
 
@@ -53,8 +54,8 @@ class InfuraApiService {
             .bodyToMono(String::class.java)
     }
 
-    fun getTransactionCount(chainType: ChainType,address: String) : Mono<String> {
-        val requestBody = InfuraRequest(method = "eth_getTransactionCount", params = listOf(address,"latest"))
+    fun getTransactionCount(chainType: ChainType, address: String): Mono<String> {
+        val requestBody = InfuraRequest(method = "eth_getTransactionCount", params = listOf(address, "latest"))
         val webClient = urlByChain(chainType)
 
         return webClient.post()
@@ -62,6 +63,22 @@ class InfuraApiService {
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
-            .bodyToMono(String::class.java)
+            .bodyToMono(InfuraResponse::class.java)
+            .mapNotNull { it.result }
+            .onErrorMap { e -> NumberFormatException("Invalid response format for transaction count") }
+    }
+
+    fun getGasPrice(chainType: ChainType): Mono<String> {
+        val requestBody = InfuraRequest(method = "eth_gasPrice", params = emptyList<String>())
+        val webClient = urlByChain(chainType)
+
+        return webClient.post()
+            .uri("/v3/$apiKey")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestBody)
+            .retrieve()
+            .bodyToMono(InfuraResponse::class.java)
+            .mapNotNull { it.result }
+            .onErrorMap { e -> NumberFormatException("Invalid response format for gas price") }
     }
 }
