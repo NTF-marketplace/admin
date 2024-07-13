@@ -5,15 +5,12 @@ import org.springframework.stereotype.Service
 import org.web3j.abi.FunctionEncoder
 import org.web3j.abi.datatypes.Address
 import org.web3j.abi.datatypes.Function
-import org.web3j.abi.datatypes.Utf8String
 import org.web3j.abi.datatypes.generated.Uint256
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameterName
-import org.web3j.protocol.http.HttpService
 import org.web3j.utils.Numeric
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.math.BigInteger
 
@@ -62,7 +59,7 @@ class Web3jService(
             .flatMap { tuple ->
                 val nonce = BigInteger(tuple.t1.removePrefix("0x"), 16)
                 val gasPrice = BigInteger(tuple.t2.removePrefix("0x"), 16)
-                val gasLimit = BigInteger.valueOf(21940)
+                val gasLimit = BigInteger.valueOf(100000)
                 val chainId = getChainId(chainType)
 
                 val function = Function(

@@ -11,9 +11,6 @@ import com.api.admin.service.Web3jService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.web3j.crypto.Credentials
-import org.web3j.protocol.Web3j
-import org.web3j.protocol.http.HttpService
 import java.math.BigInteger
 import java.time.Instant
 
@@ -71,7 +68,7 @@ class AdminServiceTest(
         val response = AdminTransferResponse(
             id= 1L,
             walletAddress = "0x01b72b4aa3f66f213d62d53e829bc172a6a72867",
-            nftId = 1L,
+            nftId = 3L,
             timestamp =  Instant.now().toEpochMilli(),
             accountType = AccountType.DEPOSIT,
             transferType = TransferType.ERC721,
@@ -108,16 +105,37 @@ class AdminServiceTest(
 
     @Test
     fun createTransactionERC721() {
-        val res = web3jService.createTransactionERC721("0x0277AD67A866C0a306D0A16f58C68425f5F216A6","0x01b72b4aa3f66f213d62d53e829bc172a6a72867",
-          BigInteger("3"),ChainType.POLYGON_AMOY).block()
+        // val res = web3jService.createTransactionERC721("0xbc0c96c8d12a149cac4f7688f740ef21b2c8fd23","0x01b72b4aa3f66f213d62d53e829bc172a6a72867",
+        //   BigInteger("0"),ChainType.POLYGON_MAINNET).block()
+        //
+        // println(res.toString())
 
-        println(res.toString())
+        // 0x1b0f6c70528addc34a5f17d0c7df59d932c27e85d29af14a957567fff29ef267
+        val res1 = transferService.getTransferData(
+            wallet = "0x01b72b4aa3f66f213d62d53e829bc172a6a72867",
+            transactionHash = "0x1b0f6c70528addc34a5f17d0c7df59d932c27e85d29af14a957567fff29ef267",
+            chainType = ChainType.POLYGON_MAINNET,
+            accountType = AccountType.WITHDRAW
+        ).block()
+
     }
 
     @Test
     fun createTransactionERC20() {
         val res = web3jService.createTransactionERC20("0x01b72b4aa3f66f213d62d53e829bc172a6a72867", amount = BigInteger("1000000000000"),ChainType.POLYGON_AMOY).block()
         println(res.toString())
+    }
+
+    @Test
+    fun test1sd() {
+        val res = transferService.getTransferData(
+            wallet = "0x01b72b4aa3f66f213d62d53e829bc172a6a72867",
+            chainType = ChainType.POLYGON_MAINNET,
+            transactionHash = "0x0b79d621e6b6652b98e4f45e604985d7f0de6530d19ee0f62b89f5f870951814",
+            accountType = AccountType.DEPOSIT
+            ).block()
+
+        Thread.sleep(50000)
     }
 
 
