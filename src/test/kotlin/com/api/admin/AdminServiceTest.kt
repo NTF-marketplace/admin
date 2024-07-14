@@ -11,6 +11,7 @@ import com.api.admin.service.Web3jService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.Instant
 
@@ -89,7 +90,7 @@ class AdminServiceTest(
 
         val transactionData = web3jService.createTransactionERC20(
             "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65",
-            BigInteger("1000000000000000000"),
+            BigDecimal("1000000000000000000"),
             ChainType.POLYGON_MAINNET
             )
 //        val response = infuraApiService.getSend(ChainType.POLYGON_MAINNET,transactionData).block()
@@ -122,7 +123,7 @@ class AdminServiceTest(
 
     @Test
     fun createTransactionERC20() {
-        val res = web3jService.createTransactionERC20("0x01b72b4aa3f66f213d62d53e829bc172a6a72867", amount = BigInteger("1000000000000"),ChainType.POLYGON_AMOY).block()
+        val res = web3jService.createTransactionERC20("0x01b72b4aa3f66f213d62d53e829bc172a6a72867", amount = BigDecimal("1000000000000"),ChainType.POLYGON_AMOY).block()
         println(res.toString())
     }
 
@@ -130,14 +131,29 @@ class AdminServiceTest(
     fun test1sd() {
         val res = transferService.getTransferData(
             wallet = "0x01b72b4aa3f66f213d62d53e829bc172a6a72867",
-            chainType = ChainType.POLYGON_MAINNET,
-            transactionHash = "0x0b79d621e6b6652b98e4f45e604985d7f0de6530d19ee0f62b89f5f870951814",
-            accountType = AccountType.DEPOSIT
+            chainType = ChainType.POLYGON_AMOY,
+            transactionHash = "0xe9d42662999109de038dc6701acf297ff7e693eaf241664323a44f71d626890e",
+            accountType = AccountType.WITHDRAW
             ).block()
 
         Thread.sleep(50000)
     }
 
+    @Test
+    fun receipe() {
+        val res = infuraApiService.getTransactionReceipt(ChainType.POLYGON_AMOY,"0xe9d42662999109de038dc6701acf297ff7e693eaf241664323a44f71d626890e").block()
+        println("res" + res)
+    }
+
+//    @Test
+//    fun twest1() {
+//        val res = web3jService.testcreateTransactionERC20(recipientAddress = "0x01b72b4aa3f66f213d62d53e829bc172a6a72867",ChainType.POLYGON_AMOY).block()
+//    }
+
+    @Test
+    fun waitForTransaction() {
+        val res = web3jService.waitForTransactionReceipt("0x2c325130ac68f839cc0a049a53a756c9a86d6c430e3367b64b3ed11f524b57c3",ChainType.POLYGON_AMOY).block()
+    }
 
 
 }

@@ -50,6 +50,8 @@ class TransferService(
         transactionHash: String,
         accountType: AccountType,
     ): Mono<Void> {
+        println("transactionHash : $transactionHash")
+        println("여기까지는 와야됨 최소한")
         return transferRepository.existsByTransactionHash(transactionHash)
             .flatMap {
                 if (it) {
@@ -67,11 +69,17 @@ class TransferService(
     fun saveTransfer(wallet: String, chainType: ChainType, transactionHash: String, accountType: AccountType): Flux<Transfer> {
         return infuraApiService.getTransferLog(chainType, transactionHash)
             .flatMapMany { response ->
-                Flux.fromIterable(response.result.logs)
-                    .flatMap { it.toEntity(wallet, accountType,chainType) }
+                val result = response.result
+                if (result != null) {
+                    Flux.fromIterable(result.logs)
+                        .flatMap { it.toEntity(wallet, accountType, chainType) }
+                } else {
+                    Flux.error(IllegalStateException("Transaction logs not found for transaction hash: $transactionHash"))
+                }
             }
             .flatMap { transfer -> transferRepository.save(transfer) }
     }
+
 
     private fun Transfer.toResponse() = AdminTransferResponse(
         id = this.id!!,
@@ -108,6 +116,8 @@ class TransferService(
             TransferType.ERC20 -> toBigDecimal(log.data)
             else -> BigDecimal.ZERO
         }
+
+        println("amount : " + amount)
 
         val isRelevantTransfer = when (accountType) {
             AccountType.DEPOSIT -> from.equals(wallet, ignoreCase = true) && to.equals(adminAddress, ignoreCase = true)

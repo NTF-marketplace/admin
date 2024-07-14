@@ -2,6 +2,7 @@ package com.api.admin.controller
 
 import com.api.admin.controller.dto.DepositRequest
 import com.api.admin.controller.dto.WithdrawERC20Request
+import com.api.admin.controller.dto.WithdrawERC721Request
 import com.api.admin.enums.AccountType
 import com.api.admin.service.TransferService
 import com.api.admin.service.Web3jService
@@ -29,30 +30,35 @@ class AdminController(
             }
     }
 
+
     @PostMapping("/withdraw/erc20")
     fun withdrawERC20(
         @RequestParam address: String,
         @RequestBody request: WithdrawERC20Request,
     ): Mono<ResponseEntity<Void>> {
-        return web3jService.createTransactionERC20(address,request.amount,request.chainType)
+        println("Received withdraw request for address: $address with amount: ${request.amount}")
+        return web3jService.createTransactionERC20(address, request.amount, request.chainType)
+        .doOnSuccess { println("Transaction successful") }
+        .then(Mono.just(ResponseEntity.ok().build<Void>()))
+        .doOnError { e ->
+            println("Error in withdrawERC20: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+
+
+    @PostMapping("/withdraw/erc721")
+    fun withdrawERC721(
+        @RequestParam address: String,
+        @RequestBody request: WithdrawERC721Request,
+    ): Mono<ResponseEntity<Void>> {
+        return web3jService.createTransactionERC721(address, request.nftId)
             .then(Mono.just(ResponseEntity.ok().build<Void>()))
             .onErrorResume {
                 Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
             }
     }
-
-
-//    @PostMapping("/withdraw/erc721")
-//    fun withdrawERC721(
-//        @RequestParam address: String,
-//        @RequestBody request: WithdrawERC721Request,
-//    ): Mono<ResponseEntity<Void>> {
-//        return transferService.getTransferData(address, request)
-//            .then(Mono.just(ResponseEntity.ok().build<Void>()))
-//            .onErrorResume {
-//                Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
-//            }
-//    }
 
 
 }

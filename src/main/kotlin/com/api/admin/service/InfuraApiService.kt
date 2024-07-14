@@ -7,6 +7,7 @@ import com.api.admin.service.dto.InfuraTransferResponse
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
+import org.web3j.protocol.core.methods.response.TransactionReceipt
 import reactor.core.publisher.Mono
 
 @Service
@@ -51,7 +52,9 @@ class InfuraApiService {
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
-            .bodyToMono(String::class.java)
+            .bodyToMono(InfuraResponse::class.java)
+            .mapNotNull { it.result }
+            .onErrorMap { e -> NumberFormatException("Invalid response format for transaction count") }
     }
 
     fun getTransactionCount(chainType: ChainType, address: String): Mono<String> {
@@ -81,4 +84,17 @@ class InfuraApiService {
             .mapNotNull { it.result }
             .onErrorMap { e -> NumberFormatException("Invalid response format for gas price") }
     }
+
+    fun getTransactionReceipt(chainType: ChainType, transactionHash: String): Mono<String> {
+        val requestBody = InfuraRequest(method = "eth_getTransactionReceipt", params = listOf(transactionHash))
+        val webClient = urlByChain(chainType)
+
+        return webClient.post()
+            .uri("/v3/$apiKey")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(requestBody)
+            .retrieve()
+            .bodyToMono(String::class.java)
+    }
+
 }
