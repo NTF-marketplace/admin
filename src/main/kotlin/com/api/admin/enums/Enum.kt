@@ -20,5 +20,9 @@ enum class TransferType {
     ERC20,ERC721,NATIVE
 }
 
+enum class TokenType {
+    MATIC, ETH
+}
+
 
 

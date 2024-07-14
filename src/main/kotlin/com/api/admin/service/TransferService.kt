@@ -24,8 +24,6 @@ class TransferService(
     private val eventPublisher: ApplicationEventPublisher,
     private val infuraApiService: InfuraApiService,
     private val nftService: NftService,
-    private val web3jService: Web3jService,
-
 ) {
 
     private val adminAddress = "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65"

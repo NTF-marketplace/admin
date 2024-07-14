@@ -1,5 +1,6 @@
 package com.api.admin.service
 
+import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
 import org.springframework.stereotype.Service
 import org.web3j.abi.FunctionEncoder
@@ -17,11 +18,10 @@ import java.math.BigInteger
 @Service
 class Web3jService(
     private val infuraApiService: InfuraApiService,
+    private val transferService: TransferService,
 ) {
 
-    private val apiKey = "98b672d2ce9a4089a3a5cb5081dde2fa"
     private val privateKey = "4ec9e64419547100af4f38d7ec57ba1de2d5c36a7dfb03f1a349b2c5b62ac0a9"
-    private val adminAddress = "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65"
 
     private fun getChainId(chain: ChainType): Long {
         val chain = when (chain) {
@@ -43,6 +43,7 @@ class Web3jService(
         tokenId: BigInteger,
         chainType: ChainType
     ): Mono<String> {
+        // nftId로 들어오면,해당 tokenId와 contractAddress, chainType으로 가져오기
         val credentials = Credentials.create(privateKey)
         return createERC721TransactionData(credentials, contractAddress, toAddress, tokenId, chainType)
     }
@@ -89,9 +90,13 @@ class Web3jService(
         recipientAddress: String,
         amount: BigInteger,
         chainType: ChainType
-    ): Mono<String> {
+    ): Mono<Void> {
         val credentials = Credentials.create(privateKey)
         return createERC20TransactionData(credentials, recipientAddress, amount, chainType)
+            .flatMap {
+                transferService.getTransferData(recipientAddress,chainType,it,AccountType.WITHDRAW)
+            }
+            .then()
     }
 
     fun createERC20TransactionData(
@@ -105,7 +110,7 @@ class Web3jService(
             .flatMap { tuple ->
                 val nonce = BigInteger(tuple.t1.removePrefix("0x"), 16)
                 val gasPrice = BigInteger(tuple.t2.removePrefix("0x"), 16)
-                val gasLimit = BigInteger.valueOf(30000)
+                val gasLimit = BigInteger.valueOf(100000)
                 val chainId = getChainId(chainType)
 
                 val rawTransaction = RawTransaction.createEtherTransaction(

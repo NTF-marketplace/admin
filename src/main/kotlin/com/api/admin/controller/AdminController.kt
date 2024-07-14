@@ -1,22 +1,20 @@
 package com.api.admin.controller
 
 import com.api.admin.controller.dto.DepositRequest
+import com.api.admin.controller.dto.WithdrawERC20Request
 import com.api.admin.enums.AccountType
 import com.api.admin.service.TransferService
+import com.api.admin.service.Web3jService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
 @RestController
 @RequestMapping("/v1/admin")
 class AdminController(
     private val transferService: TransferService,
+    private val web3jService: Web3jService,
 ) {
 
     @PostMapping("/deposit")
@@ -30,6 +28,31 @@ class AdminController(
                 Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
             }
     }
+
+    @PostMapping("/withdraw/erc20")
+    fun withdrawERC20(
+        @RequestParam address: String,
+        @RequestBody request: WithdrawERC20Request,
+    ): Mono<ResponseEntity<Void>> {
+        return web3jService.createTransactionERC20(address,request.amount,request.chainType)
+            .then(Mono.just(ResponseEntity.ok().build<Void>()))
+            .onErrorResume {
+                Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
+            }
+    }
+
+
+//    @PostMapping("/withdraw/erc721")
+//    fun withdrawERC721(
+//        @RequestParam address: String,
+//        @RequestBody request: WithdrawERC721Request,
+//    ): Mono<ResponseEntity<Void>> {
+//        return transferService.getTransferData(address, request)
+//            .then(Mono.just(ResponseEntity.ok().build<Void>()))
+//            .onErrorResume {
+//                Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
+//            }
+//    }
 
 
 }
