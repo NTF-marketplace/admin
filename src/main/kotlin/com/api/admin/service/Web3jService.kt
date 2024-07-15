@@ -13,7 +13,6 @@ import org.web3j.abi.datatypes.generated.Uint256
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
-import org.web3j.protocol.core.methods.response.TransactionReceipt
 import org.web3j.utils.Numeric
 import reactor.core.publisher.Mono
 import java.math.BigDecimal
@@ -47,13 +46,26 @@ class Web3jService(
         toAddress: String,
         nftId: Long,
     ): Mono<Void> {
-        return nftRepository.findById(nftId).flatMap {
+        return nftRepository.findById(nftId).flatMap { nft->
             val credentials = Credentials.create(privateKey)
-             createERC721TransactionData(credentials, it.tokenAddress, toAddress, BigInteger(it.tokenId), it.chainType)
-                 .flatMap { data ->
-                     transferService.getTransferData(wallet = toAddress, chainType = it.chainType, transactionHash = data, accountType = AccountType.WITHDRAW)
-                 }
-        }.then()
+            createERC721TransactionData(credentials, nft.tokenAddress, toAddress, BigInteger(nft.tokenId), nft.chainType)
+                .flatMap { transactionHash ->
+                    waitForTransactionReceipt(transactionHash, nft.chainType)
+                        .flatMap {
+                            transferService.getTransferData(
+                                wallet = toAddress,
+                                chainType = nft.chainType,
+                                transactionHash = transactionHash,
+                                accountType = AccountType.WITHDRAW
+                            )
+                        }
+                }
+                .doOnError { e ->
+                    println("Error in createTransactionERC20: ${e.message}")
+                    e.printStackTrace()
+                }
+                .then()
+        }
     }
 
     fun createERC721TransactionData(
@@ -94,19 +106,6 @@ class Web3jService(
             }
     }
 
-//    fun createTransactionERC20(
-//        recipientAddress: String,
-//        amount: BigInteger,
-//        chainType: ChainType
-//    ): Mono<Void> {
-//        val credentials = Credentials.create(privateKey)
-//        return createERC20TransactionData(credentials, recipientAddress, amountToWei(BigDecimal(amount)), chainType)
-//            .flatMap {
-//                println("transactionLog :" + it)
-//                transferService.getTransferData(recipientAddress,chainType,it,AccountType.WITHDRAW)
-//            }
-//            .then()
-//    }
 
     fun createTransactionERC20(
         recipientAddress: String,
