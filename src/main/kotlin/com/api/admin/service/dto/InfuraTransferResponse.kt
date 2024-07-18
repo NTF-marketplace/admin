@@ -6,7 +6,7 @@ import java.math.BigInteger
 data class InfuraTransferResponse(
     val jsonrpc: String,
     val id: String,
-    val result: InfuraTransferResult,
+    val result: InfuraTransferResult?,
 )
 
 data class InfuraTransferResult(
