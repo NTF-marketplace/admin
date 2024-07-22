@@ -45,7 +45,7 @@ class NftService(
                 ).flatMap {
                     nftRepository.insert(it.toEntity())
                         .onErrorResume(DuplicateKeyException::class.java) {
-                            nftRepository.findByTokenAddressAndTokenIdAndChainType(address, tokenId, chainType)
+                            Mono.empty()
                         }
                 }
             )
