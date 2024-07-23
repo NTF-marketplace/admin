@@ -1,20 +1,19 @@
 package com.api.admin.service
 
 import com.api.admin.enums.ChainType
+import com.api.admin.properties.InfuraApiProperties
 import com.api.admin.service.dto.InfuraRequest
 import com.api.admin.service.dto.InfuraResponse
 import com.api.admin.service.dto.InfuraTransferResponse
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
-import org.web3j.protocol.core.methods.response.TransactionReceipt
 import reactor.core.publisher.Mono
 
 @Service
-class InfuraApiService {
-
-    private val apiKey = "98b672d2ce9a4089a3a5cb5081dde2fa"
-
+class InfuraApiService(
+    private val infuraApiProperties: InfuraApiProperties,
+) {
     fun urlByChain(chainType: ChainType) : WebClient {
         val baseUrl = when (chainType) {
             ChainType.ETHEREUM_MAINNET -> "https://mainnet.infura.io"
@@ -35,7 +34,7 @@ class InfuraApiService {
         val webClient = urlByChain(chainType)
 
         return webClient.post()
-            .uri("/v3/$apiKey")
+            .uri("/v3/${infuraApiProperties.infura}")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
@@ -48,7 +47,7 @@ class InfuraApiService {
         val webClient = urlByChain(chainType)
 
         return webClient.post()
-            .uri("/v3/$apiKey")
+            .uri("/v3/${infuraApiProperties.infura}")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
@@ -62,7 +61,7 @@ class InfuraApiService {
         val webClient = urlByChain(chainType)
 
         return webClient.post()
-            .uri("/v3/$apiKey")
+            .uri("/v3/${infuraApiProperties.infura}")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
@@ -76,7 +75,7 @@ class InfuraApiService {
         val webClient = urlByChain(chainType)
 
         return webClient.post()
-            .uri("/v3/$apiKey")
+            .uri("/v3/${infuraApiProperties.infura}")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()
@@ -90,7 +89,7 @@ class InfuraApiService {
         val webClient = urlByChain(chainType)
 
         return webClient.post()
-            .uri("/v3/$apiKey")
+            .uri("/v3/${infuraApiProperties.infura}")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(requestBody)
             .retrieve()

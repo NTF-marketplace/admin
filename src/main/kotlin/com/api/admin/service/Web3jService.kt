@@ -3,6 +3,7 @@ package com.api.admin.service
 import com.api.admin.domain.nft.NftRepository
 import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
+import com.api.admin.properties.AdminInfoProperties
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
@@ -24,9 +25,10 @@ class Web3jService(
     private val infuraApiService: InfuraApiService,
     private val transferService: TransferService,
     private val nftRepository: NftRepository,
+    private val adminInfoProperties: AdminInfoProperties
 ) {
 
-    private val privateKey = "4ec9e64419547100af4f38d7ec57ba1de2d5c36a7dfb03f1a349b2c5b62ac0a9"
+    // private val privateKey = "4ec9e64419547100af4f38d7ec57ba1de2d5c36a7dfb03f1a349b2c5b62ac0a9"
 
     private fun getChainId(chain: ChainType): Long {
         val chain = when (chain) {
@@ -47,7 +49,7 @@ class Web3jService(
         nftId: Long,
     ): Mono<Void> {
         return nftRepository.findById(nftId).flatMap { nft->
-            val credentials = Credentials.create(privateKey)
+            val credentials = Credentials.create(adminInfoProperties.privatekey)
             createERC721TransactionData(credentials, nft.tokenAddress, toAddress, BigInteger(nft.tokenId), nft.chainType)
                 .flatMap { transactionHash ->
                     waitForTransactionReceipt(transactionHash, nft.chainType)
@@ -112,7 +114,7 @@ class Web3jService(
         amount: BigDecimal,
         chainType: ChainType
     ): Mono<Void> {
-        val credentials = Credentials.create(privateKey)
+        val credentials = Credentials.create(adminInfoProperties.privatekey)
         val weiAmount = amountToWei(amount)
         return createERC20TransactionData(credentials, recipientAddress, weiAmount, chainType)
             .flatMap { transactionHash ->

@@ -1,5 +1,6 @@
 package com.api.admin.service
 
+import com.api.admin.properties.NftApiProperties
 import com.api.admin.service.dto.NftRequest
 import com.api.admin.service.dto.NftResponse
 import org.springframework.http.MediaType
@@ -8,11 +9,13 @@ import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 
 @Service
-class NftApiService {
+class NftApiService(
+     nftApiProperties: NftApiProperties,
+) {
 
 
     private val webClient = WebClient.builder()
-        .baseUrl(uri)
+        .baseUrl(nftApiProperties.uri)
         .build()
 
     fun getNftSave(request: NftRequest): Mono<NftResponse> {
@@ -23,8 +26,4 @@ class NftApiService {
             .bodyToMono(NftResponse::class.java)
     }
 
-
-    companion object {
-        val uri = "http://localhost:8082/v1/nft"
-    }
 }

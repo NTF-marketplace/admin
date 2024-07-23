@@ -1,11 +1,11 @@
 package com.api.admin.service
 
-import com.api.admin.domain.nft.NftRepository
 import com.api.admin.domain.transfer.Transfer
 import com.api.admin.domain.transfer.TransferRepository
 import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
 import com.api.admin.enums.TransferType
+import com.api.admin.properties.AdminInfoProperties
 import com.api.admin.rabbitMQ.event.dto.AdminTransferCreatedEvent
 import com.api.admin.rabbitMQ.event.dto.AdminTransferResponse
 import com.api.admin.service.dto.InfuraTransferDetail
@@ -19,30 +19,16 @@ import java.time.Instant
 
 @Service
 class TransferService(
-    private val nftRepository: NftRepository,
     private val transferRepository: TransferRepository,
     private val eventPublisher: ApplicationEventPublisher,
     private val infuraApiService: InfuraApiService,
     private val nftService: NftService,
+    private val adminInfoProperties: AdminInfoProperties,
 ) {
 
-    private val adminAddress = "0x9bDeF468ae33b09b12a057B4c9211240D63BaE65"
     private val transferEventSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
     private val nativeTransferEventSignature = "0xe6497e3ee548a3372136af2fcb0696db31fc6cf20260707645068bd3fe97f3c4"
 
-
-    // fun accountTransfer(
-    //     wallet: String,
-    //     chainType: ChainType,
-    //     transactionHash: String,
-    //     accountType: AccountType,
-    //     transferType: TransferType,
-    // ) {
-    //     return when(accountType) {
-    //         AccountType.DEPOSIT -> getTransferData(wallet,chainType,transactionHash, accountType)
-    //
-    //     }
-    // }
 
     fun getTransferData(
         wallet: String,
@@ -51,7 +37,6 @@ class TransferService(
         accountType: AccountType,
     ): Mono<Void> {
         println("transactionHash : $transactionHash")
-        println("여기까지는 와야됨 최소한")
         return transferRepository.existsByTransactionHash(transactionHash)
             .flatMap {
                 if (it) {
@@ -120,8 +105,8 @@ class TransferService(
         println("amount : " + amount)
 
         val isRelevantTransfer = when (accountType) {
-            AccountType.DEPOSIT -> from.equals(wallet, ignoreCase = true) && to.equals(adminAddress, ignoreCase = true)
-            AccountType.WITHDRAW -> from.equals(adminAddress, ignoreCase = true) && to.equals(wallet, ignoreCase = true)
+            AccountType.DEPOSIT -> from.equals(wallet, ignoreCase = true) && to.equals(adminInfoProperties.address, ignoreCase = true)
+            AccountType.WITHDRAW -> from.equals(adminInfoProperties.address, ignoreCase = true) && to.equals(wallet, ignoreCase = true)
         }
 
         return if (isRelevantTransfer) {
@@ -151,8 +136,8 @@ class TransferService(
         val tokenId = BigInteger(log.topics[3].removePrefix("0x"), 16).toString()
 
         val isRelevantTransfer = when (accountType) {
-            AccountType.DEPOSIT -> from.equals(wallet, ignoreCase = true) && to.equals(adminAddress, ignoreCase = true)
-            AccountType.WITHDRAW -> from.equals(adminAddress, ignoreCase = true) && to.equals(wallet, ignoreCase = true)
+            AccountType.DEPOSIT -> from.equals(wallet, ignoreCase = true) && to.equals(adminInfoProperties.address, ignoreCase = true)
+            AccountType.WITHDRAW -> from.equals(adminInfoProperties.address, ignoreCase = true) && to.equals(wallet, ignoreCase = true)
         }
 
         return if (isRelevantTransfer) {
