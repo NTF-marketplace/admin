@@ -2,7 +2,7 @@ name: Create and publish a container image, update helm chart 'appVersion'
 
 on:
   push:
-    branches: ["main", "develop", "feat/cicd"]
+    branches: ["main", "develop"]
 
 #############################################
 #
