@@ -113,8 +113,7 @@ jobs:
           branch: develop
 
   main:
-    # if: github.ref == 'refs/heads/main'
-    if: github.ref == 'refs/heads/feat/cicd'
+    if: github.ref == 'refs/heads/main'
     name: Build and Push Container Image to Amazon ECR
     runs-on: ubuntu-latest
     env:
