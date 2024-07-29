@@ -84,8 +84,8 @@ class TransferService(
                 when {
                     log.topics[0] == nativeTransferEventSignature ->
                         handleERC20Transfer(log, wallet, accountType, chainType,TransferType.NATIVE)
-                    log.topics[0] == transferEventSignature && log.topics.size == 3 ->
-                        handleERC20Transfer(log, wallet, accountType, chainType, TransferType.ERC20)
+//                    log.topics[0] == transferEventSignature && log.topics.size == 3 ->
+//                        handleERC20Transfer(log, wallet, accountType, chainType, TransferType.ERC20)
                     log.topics[0] == transferEventSignature && log.topics.size == 4 ->
                         handleERC721Transfer(log, wallet, accountType, chainType)
                     else -> Mono.empty()
@@ -98,11 +98,9 @@ class TransferService(
         val to = parseAddress(log.topics[3])
         val amount = when (transferType) {
             TransferType.NATIVE -> parseNativeTransferAmount(log.data)
-            TransferType.ERC20 -> toBigDecimal(log.data)
+//            TransferType.ERC20 -> toBigDecimal(log.data)
             else -> BigDecimal.ZERO
         }
-
-        println("amount : " + amount)
 
         val isRelevantTransfer = when (accountType) {
             AccountType.DEPOSIT -> from.equals(wallet, ignoreCase = true) && to.equals(adminInfoProperties.address, ignoreCase = true)
