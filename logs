@@ -1,0 +1,17 @@
+Downloading https://services.gradle.org/distributions/gradle-7.6-bin.zip
+....................................................................................................................
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Could not open cp_settings generic class cache for settings file '/Users/odudeong/IdeaProjects/admin/Web3App/settings.gradle' (/Users/odudeong/.gradle/caches/7.6/scripts/eox0kpw4vi7cwl95dqm0jolbf).
+> BUG! exception in phase 'semantic analysis' in source unit '_BuildScript_' Unsupported class file major version 65
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+
+* Get more help at https://help.gradle.org
+
+BUILD FAILED in 7s

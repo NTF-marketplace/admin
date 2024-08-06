@@ -1,14 +1,13 @@
-package com.api.admin
+package com.api.admin.service.dto
 
 import com.api.admin.domain.nft.Nft
+import com.api.admin.enums.ChainType
 
 data class NftResponse(
     val id : Long,
     val tokenId: String,
     val tokenAddress: String,
-    val chainType: String,
-    val nftName: String,
-    val collectionName: String
+    val chainType: ChainType,
 ){
     companion object{
         fun NftResponse.toEntity() = Nft(
@@ -16,8 +15,6 @@ data class NftResponse(
             tokenId = this.tokenId,
             tokenAddress = this.tokenAddress,
             chainType = this.chainType,
-            nftName = this.nftName,
-            collectionName = this.collectionName
         )
     }
 }

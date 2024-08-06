@@ -1,9 +1,9 @@
 spring:
   application:
     name: admin
-  config:
-    import: "optional:configserver:http://localhost:9000"
   cloud:
     config:
+      uri: https://localhost:9000
       fail-fast: true
-
+  profiles:
+    active: local

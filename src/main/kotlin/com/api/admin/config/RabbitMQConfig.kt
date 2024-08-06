@@ -3,6 +3,7 @@ package com.api.admin.config
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.DirectExchange
+import org.springframework.amqp.core.FanoutExchange
 import org.springframework.amqp.core.Queue
 import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
@@ -14,21 +15,6 @@ import org.springframework.context.annotation.Configuration
 class RabbitMQConfig {
 
     @Bean
-    fun nftQueue(): Queue {
-        return Queue("nftQueue", true)
-    }
-
-    @Bean
-    fun nftExchange(): DirectExchange {
-        return DirectExchange("nftExchange")
-    }
-
-    @Bean
-    fun bindingNftQueue(nftQueue: Queue, nftExchange: DirectExchange): Binding {
-        return BindingBuilder.bind(nftQueue).to(nftExchange).with("nftRoutingKey")
-    }
-
-    @Bean
     fun jsonMessageConverter(): Jackson2JsonMessageConverter = Jackson2JsonMessageConverter()
 
     @Bean
@@ -37,4 +23,15 @@ class RabbitMQConfig {
         template.messageConverter = jsonMessageConverter
         return template
     }
+
+    private fun createExchange(name: String): FanoutExchange {
+        return FanoutExchange(name)
+    }
+
+    @Bean
+    fun nftExchange() = createExchange("nftExchange")
+
+    @Bean
+    fun transferExchange() = createExchange("transferExchange")
+
 }
