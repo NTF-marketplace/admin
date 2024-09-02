@@ -4,6 +4,7 @@ import com.api.admin.domain.nft.NftRepository
 import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
 import com.api.admin.properties.AdminInfoProperties
+import com.api.admin.util.Util.getChainId
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
@@ -16,6 +17,7 @@ import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
 import org.web3j.utils.Numeric
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.Duration
@@ -28,48 +30,38 @@ class Web3jService(
     private val adminInfoProperties: AdminInfoProperties
 ) {
 
-    // private val privateKey = "4ec9e64419547100af4f38d7ec57ba1de2d5c36a7dfb03f1a349b2c5b62ac0a9"
 
-    private fun getChainId(chain: ChainType): Long {
-        val chain = when (chain) {
-            ChainType.ETHEREUM_MAINNET -> 1L
-            ChainType.POLYGON_MAINNET -> 137L
-            ChainType.LINEA_MAINNET -> 59144L
-            ChainType.LINEA_SEPOLIA -> 59140L
-            ChainType.ETHEREUM_HOLESKY -> 1L
-            ChainType.ETHEREUM_SEPOLIA -> 11155111L
-            ChainType.POLYGON_AMOY -> 80002L
-        }
-        return chain
+//    fun createTransactionERC721(toAddress: String, nftId: Long): Mono<Void> {
+//        return Mono.defer { processTransactionERC721(toAddress, nftId) }
+//            .subscribeOn(Schedulers.boundedElastic())
+//            .onErrorResume { error ->
+//                transferService.getTransferData(toAddress, nft.chainType, "failed_hash", AccountType.WITHDRAW, TransactionStatus.FAILURE, error.message ?: "Unknown error")
+//            }
+//            .then(Mono.empty())
+//    }
+
+    fun processTransactionERC721(toAddress: String, nftId: Long): Mono<Void> {
+        return nftRepository.findById(nftId)
+            .flatMap { nft ->
+                val credentials = Credentials.create(adminInfoProperties.privatekey)
+                createERC721TransactionData(credentials, nft.tokenAddress, toAddress, BigInteger(nft.tokenId), nft.chainType)
+                    .flatMap { transactionHash ->
+                        waitForTransactionReceipt(transactionHash, nft.chainType)
+                            .flatMap {
+                                transferService.getTransferData(
+                                    wallet = toAddress,
+                                    chainType = nft.chainType,
+                                    transactionHash = transactionHash,
+                                    accountType = AccountType.WITHDRAW
+                                )
+                            }
+                    }
+            }
+            .doOnError { e ->
+                println("Error in createTransactionERC721: ${e.message}")
+                e.printStackTrace()
+            }
     }
-
-
-    fun createTransactionERC721(
-        toAddress: String,
-        nftId: Long,
-    ): Mono<Void> {
-        return nftRepository.findById(nftId).flatMap { nft->
-            val credentials = Credentials.create(adminInfoProperties.privatekey)
-            createERC721TransactionData(credentials, nft.tokenAddress, toAddress, BigInteger(nft.tokenId), nft.chainType)
-                .flatMap { transactionHash ->
-                    waitForTransactionReceipt(transactionHash, nft.chainType)
-                        .flatMap {
-                            transferService.getTransferData(
-                                wallet = toAddress,
-                                chainType = nft.chainType,
-                                transactionHash = transactionHash,
-                                accountType = AccountType.WITHDRAW
-                            )
-                        }
-                }
-                .doOnError { e ->
-                    println("Error in createTransactionERC20: ${e.message}")
-                    e.printStackTrace()
-                }
-                .then()
-        }
-    }
-
     fun createERC721TransactionData(
         credentials: Credentials,
         contractAddress: String,
@@ -108,8 +100,14 @@ class Web3jService(
             }
     }
 
+//    fun createTransactionERC20(recipientAddress: String, amount: BigDecimal, chainType: ChainType): Mono<Void> {
+//         Mono.defer { processTransactionERC20(recipientAddress, amount, chainType) }
+//             .subscribeOn(Schedulers.boundedElastic())
+//             .subscribe()
+//        return Mono.empty()
+//    }
 
-    fun createTransactionERC20(
+    fun processTransactionERC20(
         recipientAddress: String,
         amount: BigDecimal,
         chainType: ChainType
@@ -165,8 +163,6 @@ class Web3jService(
 
 
     fun waitForTransactionReceipt(transactionHash: String, chainType: ChainType, maxAttempts: Int = 5, attempt: Int = 1): Mono<String> {
-
-
         val objectMapper = ObjectMapper()
         println("Attempt $attempt for transaction $transactionHash")
         return infuraApiService.getTransactionReceipt(chainType, transactionHash)

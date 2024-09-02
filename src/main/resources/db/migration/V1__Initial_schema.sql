@@ -36,3 +36,11 @@ CREATE TABLE IF NOT EXISTS transfer (
     transaction_hash VARCHAR(255) NOT NULL,
     chain_type chain_type NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS transfer_fail_log (
+    id SERIAL PRIMARY KEY,
+    wallet VARCHAR(255) NOT NULL,
+    timestamp bigint not null,
+    transaction_hash VARCHAR(255),
+    error_message varchar(1000) NOT NULL
+);

@@ -37,7 +37,7 @@ class AdminController(
         @RequestBody request: WithdrawERC20Request,
     ): Mono<ResponseEntity<Void>> {
         println("Received withdraw request for address: $address with amount: ${request.amount}")
-        return web3jService.createTransactionERC20(address, request.amount, request.chainType)
+        return web3jService.processTransactionERC20(address, request.amount, request.chainType)
         .doOnSuccess { println("Transaction successful") }
         .then(Mono.just(ResponseEntity.ok().build<Void>()))
         .doOnError { e ->
@@ -53,7 +53,7 @@ class AdminController(
         @RequestParam address: String,
         @RequestBody request: WithdrawERC721Request,
     ): Mono<ResponseEntity<Void>> {
-        return web3jService.createTransactionERC721(address, request.nftId)
+        return web3jService.processTransactionERC721(address, request.nftId)
             .then(Mono.just(ResponseEntity.ok().build<Void>()))
             .onErrorResume {
                 Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())

@@ -36,7 +36,6 @@ class TransferService(
         transactionHash: String,
         accountType: AccountType,
     ): Mono<Void> {
-        println("transactionHash : $transactionHash")
         return transferRepository.existsByTransactionHash(transactionHash)
             .flatMap {
                 if (it) {
