@@ -3,11 +3,13 @@ package com.api.admin.service
 import com.api.admin.domain.nft.NftRepository
 import com.api.admin.enums.AccountType
 import com.api.admin.enums.ChainType
+import com.api.admin.enums.TransferType
 import com.api.admin.properties.AdminInfoProperties
 import com.api.admin.util.Util.getChainId
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.web3j.abi.FunctionEncoder
 import org.web3j.abi.datatypes.Address
 import org.web3j.abi.datatypes.Function
@@ -27,20 +29,20 @@ class Web3jService(
     private val infuraApiService: InfuraApiService,
     private val transferService: TransferService,
     private val nftRepository: NftRepository,
-    private val adminInfoProperties: AdminInfoProperties
+    private val adminInfoProperties: AdminInfoProperties,
+    private val transferFailService: TransferFailService,
 ) {
 
 
-//    fun createTransactionERC721(toAddress: String, nftId: Long): Mono<Void> {
-//        return Mono.defer { processTransactionERC721(toAddress, nftId) }
-//            .subscribeOn(Schedulers.boundedElastic())
-//            .onErrorResume { error ->
-//                transferService.getTransferData(toAddress, nft.chainType, "failed_hash", AccountType.WITHDRAW, TransactionStatus.FAILURE, error.message ?: "Unknown error")
-//            }
-//            .then(Mono.empty())
-//    }
+   fun createTransactionERC721(toAddress: String, nftId: Long,accountId: Long): Mono<Void> {
+       return Mono.defer { processTransactionERC721(toAddress, nftId, accountId) }
+           .subscribeOn(Schedulers.boundedElastic())
+           .then(Mono.empty())
+   }
 
-    fun processTransactionERC721(toAddress: String, nftId: Long): Mono<Void> {
+    @Transactional
+    fun processTransactionERC721(toAddress: String, nftId: Long,accountId: Long): Mono<Void> {
+        var transactionHash: String? = null
         return nftRepository.findById(nftId)
             .flatMap { nft ->
                 val credentials = Credentials.create(adminInfoProperties.privatekey)
@@ -52,12 +54,23 @@ class Web3jService(
                                     wallet = toAddress,
                                     chainType = nft.chainType,
                                     transactionHash = transactionHash,
-                                    accountType = AccountType.WITHDRAW
+                                    accountType = AccountType.WITHDRAW,
+                                    accountLogId = accountId,
                                 )
                             }
                     }
             }
             .doOnError { e ->
+                e.message?.let {
+                    transferFailService.save(
+                        accountId,
+                        toAddress,
+                        transactionHash = transactionHash,
+                        message = it,
+                        transferType = TransferType.ERC721,
+                        accountType = AccountType.WITHDRAW
+                    )
+                }
                 println("Error in createTransactionERC721: ${e.message}")
                 e.printStackTrace()
             }
@@ -100,29 +113,41 @@ class Web3jService(
             }
     }
 
-//    fun createTransactionERC20(recipientAddress: String, amount: BigDecimal, chainType: ChainType): Mono<Void> {
-//         Mono.defer { processTransactionERC20(recipientAddress, amount, chainType) }
-//             .subscribeOn(Schedulers.boundedElastic())
-//             .subscribe()
-//        return Mono.empty()
-//    }
+   fun createTransactionERC20(recipientAddress: String, amount: BigDecimal, chainType: ChainType,accountId: Long): Mono<Void> {
+        Mono.defer { processTransactionERC20(recipientAddress, amount, chainType,accountId) }
+            .subscribeOn(Schedulers.boundedElastic())
+            .subscribe()
+       return Mono.empty()
+   }
 
     fun processTransactionERC20(
-        recipientAddress: String,
+        toAddress: String,
         amount: BigDecimal,
-        chainType: ChainType
+        chainType: ChainType,
+        accountId: Long,
     ): Mono<Void> {
+        var transactionHash: String? = null
         val credentials = Credentials.create(adminInfoProperties.privatekey)
         val weiAmount = amountToWei(amount)
-        return createERC20TransactionData(credentials, recipientAddress, weiAmount, chainType)
+        return createERC20TransactionData(credentials, toAddress, weiAmount, chainType)
             .flatMap { transactionHash ->
                 println("transactionLog: $transactionHash")
                 waitForTransactionReceipt(transactionHash, chainType)
                     .flatMap {
-                        transferService.getTransferData(recipientAddress, chainType, transactionHash, AccountType.WITHDRAW)
+                        transferService.getTransferData(toAddress, chainType, transactionHash, AccountType.WITHDRAW,accountId)
                     }
             }
             .doOnError { e ->
+                e.message?.let {
+                    transferFailService.save(
+                        accountId,
+                        toAddress,
+                        transactionHash = transactionHash,
+                        message = it,
+                        transferType = TransferType.ERC721,
+                        accountType = AccountType.WITHDRAW
+                    )
+                }
                 println("Error in createTransactionERC20: ${e.message}")
                 e.printStackTrace()
             }

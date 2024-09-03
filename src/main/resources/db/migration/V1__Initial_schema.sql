@@ -42,5 +42,6 @@ CREATE TABLE IF NOT EXISTS transfer_fail_log (
     wallet VARCHAR(255) NOT NULL,
     timestamp bigint not null,
     transaction_hash VARCHAR(255),
+    transfer_type transfer_type NOT NULL,
     error_message varchar(1000) NOT NULL
 );

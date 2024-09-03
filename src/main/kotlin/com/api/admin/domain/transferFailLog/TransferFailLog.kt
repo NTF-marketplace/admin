@@ -1,5 +1,6 @@
 package com.api.admin.domain.transferFailLog
 
+import com.api.admin.enums.TransferType
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 import java.sql.Timestamp
@@ -11,4 +12,5 @@ data class TransferFailLog(
     val timestamp: Long? = System.currentTimeMillis(),
     val transactionHash: String?,
     val errorMessage: String,
+    val transferType: TransferType,
     )

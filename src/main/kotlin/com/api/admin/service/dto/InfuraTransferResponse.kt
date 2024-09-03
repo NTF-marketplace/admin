@@ -1,8 +1,5 @@
 package com.api.admin.service.dto
 
-import java.math.BigDecimal
-import java.math.BigInteger
-
 data class InfuraTransferResponse(
     val jsonrpc: String,
     val id: String,
