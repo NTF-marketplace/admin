@@ -24,5 +24,7 @@ enum class TokenType {
     MATIC, ETH
 }
 
-
+enum class TransactionStatusType {
+    SUCCESS, FAILURE
+}
 
