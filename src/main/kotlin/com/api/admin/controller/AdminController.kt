@@ -23,10 +23,10 @@ class AdminController(
         @RequestParam address: String,
         @RequestBody request: DepositRequest,
     ): Mono<ResponseEntity<Void>> {
-        return transferService.getTransferData(address, request.chainType, request.transactionHash, AccountType.DEPOSIT)
+        return transferService.getTransferData(address, request.chainType, request.transactionHash, AccountType.DEPOSIT, request.accountLogId)
             .then(Mono.just(ResponseEntity.ok().build<Void>()))
             .onErrorResume {
-                Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
+                Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).build())
             }
     }
 
@@ -37,13 +37,9 @@ class AdminController(
         @RequestBody request: WithdrawERC20Request,
     ): Mono<ResponseEntity<Void>> {
         println("Received withdraw request for address: $address with amount: ${request.amount}")
-        return web3jService.createTransactionERC20(address, request.amount, request.chainType)
+        return web3jService.createTransactionERC20(address, request.amount, request.chainType,request.accountLogId)
         .doOnSuccess { println("Transaction successful") }
-        .then(Mono.just(ResponseEntity.ok().build<Void>()))
-        .doOnError { e ->
-            println("Error in withdrawERC20: ${e.message}")
-            e.printStackTrace()
-        }
+        .then(Mono.just(ResponseEntity.ok().build()))
     }
 
 
@@ -53,11 +49,8 @@ class AdminController(
         @RequestParam address: String,
         @RequestBody request: WithdrawERC721Request,
     ): Mono<ResponseEntity<Void>> {
-        return web3jService.createTransactionERC721(address, request.nftId)
-            .then(Mono.just(ResponseEntity.ok().build<Void>()))
-            .onErrorResume {
-                Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
-            }
+        return web3jService.createTransactionERC721(address, request.nftId,request.accountLogId)
+            .then(Mono.just(ResponseEntity.ok().build()))
     }
 
 

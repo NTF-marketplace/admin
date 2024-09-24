@@ -11,7 +11,7 @@ class AdminEventListener(
 ) {
 
     @EventListener
-    fun onDepositSend(event: AdminTransferCreatedEvent) {
+    fun onTransferSend(event: AdminTransferCreatedEvent) {
         provider.transferSend(event.transfer)
     }
 }
