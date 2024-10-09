@@ -44,8 +44,6 @@ class TransferService(
                     Mono.error(IllegalStateException("Transaction already exists"))
                 } else {
                     Mono.defer { saveTransfer(wallet, chainType, transactionHash, accountType,accountLogId).then() }
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .then(Mono.empty())
                 }
             }
     }
@@ -68,6 +66,7 @@ class TransferService(
             }
             .flatMap { transfer -> transferRepository.save(transfer).doOnNext { println("having ?") }
                 .doOnSuccess {transfer ->
+                    println("transfer : " + transfer.toString() )
                     eventPublisher.publishEvent(AdminTransferCreatedEvent(this, transfer.toResponse(accountId)))
                 }.then()
         }
